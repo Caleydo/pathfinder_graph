@@ -1,0 +1,26 @@
+{
+  "name": "pathfinder_graph",
+  "version": "0.0.1",
+  "peerDependencies": {
+    "caleydo_server": "*"
+  },
+  "caleydo": {
+    "plugins": {
+      "python": [
+        {
+          "type": "namespace",
+          "id": "pathfinder_graph",
+          "file": "pathway",
+          "namespace": "/api/pathway"
+        }
+      ]
+    },
+    "dependencies": {
+      "python": {
+        "py2neo": ">=2.0.4",
+        "pydotplus": ">=2.0.2",
+        "Flask-Sockets": ">=0.1"
+      }
+    }
+  }
+}
