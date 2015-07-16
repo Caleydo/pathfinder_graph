@@ -22,5 +22,8 @@
         "Flask-Sockets": ">=0.1"
       }
     }
+  },
+  "publishConfig": {
+    "registry": "http://dev.caleydo.org/nexus/content/repositories/caleydo-web/"
   }
 }
