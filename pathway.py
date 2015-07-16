@@ -31,7 +31,7 @@ class Config(object):
     self.inline = sett.get('inline', dict(inline='ConsistsOfEdge',undirectional=False,flag='_isSetEdge',aggregate='pathways',toaggregate='id',type='Edge'))
 
 configs = dict()
-config_dir = configview('caleydo').clientDir+'/external/caleydo-pathfinder/uc/'
+config_dir = configview('caleydo').clientDir+'/external/caleydo_pathfinder/uc/'
 for f in os.listdir(config_dir):
   configs[f.replace('.json','')] = Config(os.path.join(config_dir,f))
 
