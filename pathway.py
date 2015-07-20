@@ -125,14 +125,23 @@ def parse_incremental_json(text, on_chunk):
     return text
   return text[start:]
 
-class Query(object):
+
+class SocketTask(object):
+  def __init__(self, socket_ns):
+    self.socket_ns = socket_ns
+
+  def send_impl(self, t, msg):
+    #print 'send'+t+str(msg)
+    d = json.dumps(dict(type=t,data=msg))
+    self.socket_ns.send(d)
+
+class NodeAsyncTask(SocketTask):
   def __init__(self, q, socket_ns):
+    super(NodeAsyncTask, self).__init__(socket_ns)
     self.q = q
     self.conn = httplib.HTTPConnection(config.host, config.port)
-    self.socket_ns = socket_ns
     self.shutdown = threading.Event()
     self.t = threading.Thread(target=self.stream)
-    self.paths = []
 
   def abort(self):
     if self.shutdown.isSet():
@@ -140,24 +149,32 @@ class Query(object):
     self.conn.close()
     self.shutdown.set()
 
-  def send_path(self, path):
-    if self.shutdown.isSet():
-      return
-    self.paths.append(path)
-    print 'sending path ',len(self.paths)
-    self.send_impl('query_path',dict(query=self.q,path=path,i=len(self.paths)))
-
-  def send_impl(self, t, msg):
-    #print 'send'+t+str(msg)
-    d = json.dumps(dict(type=t,data=msg))
-    self.socket_ns.send(d)
+  def send_incremental(self, path):
+    pass
 
   def send_start(self):
-    self.send_impl('query_start',dict(query=self.q))
+    pass
 
   def send_done(self):
-    print 'sending done ',len(self.paths)
-    self.send_impl('query_done',dict(query=self.q)) #,paths=self.paths))
+   pass
+
+  def to_url(self, args):
+    return '/caleydo/kShortestPaths/?{0}'.format(args)
+
+  def run(self):
+    headers = {
+      'Content-type': 'application/json',
+      'Accept': 'application/json'
+      }
+    args = { k : json.dumps(v) if type(v) is dict else v for k,v in self.q.iteritems()}
+    print args
+    args = urllib.urlencode(args)
+    url = self.to_url(args)
+    print url
+    body = ''
+    self.conn.request('GET', url, body, headers)
+    self.send_start()
+    self.t.start()
 
   def stream(self):
     response = self.conn.getresponse()
@@ -175,13 +192,13 @@ class Query(object):
         break
       data += s
       l += len(s)
-      data = parse_incremental_json(data,self.send_path)
+      data = parse_incremental_json(data,self.send_incremental)
 
     if self.shutdown.isSet():
       print 'aborted'
       return
 
-    parse_incremental_json(data,self.send_path)
+    parse_incremental_json(data,self.send_incremental)
     # print response.status, response.reason
     #data = response.read()
     self.send_done()
@@ -190,20 +207,52 @@ class Query(object):
     self.shutdown.set()
     print 'end'
 
-  def run(self):
-    headers = {
-      'Content-type': 'application/json',
-      'Accept': 'application/json'
-      }
-    args = { k : json.dumps(v) if type(v) is dict else v for k,v in self.q.iteritems()}
-    print args
-    args = urllib.urlencode(args)
-    url = '/caleydo/kShortestPaths/?{0}'.format(args)
-    print url
-    body = ''
-    self.conn.request('GET', url, body, headers)
-    self.send_start()
-    self.t.start()
+class Query(NodeAsyncTask):
+  def __init__(self, q, socket_ns):
+    super(Query, self).__init__(q, socket_ns)
+    self.paths = []
+
+  def send_incremental(self, path):
+    if self.shutdown.isSet():
+      return
+    self.paths.append(path)
+    print 'sending path ',len(self.paths)
+    self.send_impl('query_path',dict(query=self.q,path=path,i=len(self.paths)))
+
+  def send_start(self):
+    self.send_impl('query_start',dict(query=self.q))
+
+  def send_done(self):
+    print 'sending done ',len(self.paths)
+    self.send_impl('query_done',dict(query=self.q)) #,paths=self.paths))
+
+  def to_url(self, args):
+    return '/caleydo/kShortestPaths/?{0}'.format(args)
+
+
+class Neighbors(NodeAsyncTask):
+  def __init__(self, q, socket_ws):
+    super(Neighbors, self).__init__(q, socket_ws)
+    self.node = q['node']
+    self.neighbors = []
+
+  def send_incremental(self, neighbor):
+    if self.shutdown.isSet():
+      return
+    self.neighbors.append(neighbor)
+    print 'sending neighbor ',len(self.neighbors)
+    self.send_impl('neighbor_neighbor',dict(node=self.node,neighbor=neighbor,i=len(self.neighbors)))
+
+  def send_start(self):
+    self.send_impl('neighbor_start',dict(node=self.node))
+
+  def send_done(self):
+    print 'sending done ',len(self.neighbors)
+    self.send_impl('neighbor_done',dict(node=self.node,neighbors=self.neighbors)) #,paths=self.paths))
+
+  def to_url(self, args):
+    return '/caleydo/kShortestPaths/neighborsOf/{0}?{1}'.format(str(self.node),args)
+
 
 current_query = None
 
@@ -216,11 +265,14 @@ def websocket_query(ws):
     data = json.loads(msg)
     t = data['type']
     payload = data['data']
+
+    if current_query is not None:
+      current_query.abort()
     if t == 'query':
-      if current_query is not None:
-        current_query.abort()
       current_query = Query(to_query(payload), ws)
-      current_query.run()
+    elif t == 'neighbor':
+      current_query = Neighbors(to_neigbors_query(payload), ws)
+    current_query.run()
 
 def to_query(msg):
   k = msg.get('k',1)
@@ -251,6 +303,25 @@ def to_query(msg):
     del c['inline']
 
   return args
+
+def to_neigbors_query(msg):
+  just_network = msg.get('just_network_edges', False)
+  node = int(msg.get('node'))
+  args = {
+    'node': node
+  }
+ #TODO generate from config
+  directions = config.directions
+  inline = config.inline
+  args['constraints'] = dict(dir=directions,inline=inline,acyclic=True)
+  if just_network:
+    directions = dict(directions)
+    del directions[inline['inline']]
+    c = args['constraints']
+    del c['inline']
+
+  return args
+
 
 @app.route("/summary")
 def get_graph_summary():
