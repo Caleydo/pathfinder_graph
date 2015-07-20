@@ -2,15 +2,18 @@ import os
 from os import listdir
 from os.path import isfile, join
 
+from py2neo import Graph
+
 import gzip
 import xml.sax
 import argparse
+import itertools
 
 from import_utils import GraphImporter
 
 
 parser = argparse.ArgumentParser(description='DBLP Importer')
-parser.add_argument('--db', default="http://192.168.56.1:7476/db/data/")
+parser.add_argument('--db', default="http://192.168.56.1:7475/db/data/")
 parser.add_argument('--data_dir', '-d', default='/vagrant_data', help='data directory')
 parser.add_argument('--undirected', action='store_true', help='create undirected graph')
 parser.add_argument('--sets', action='store_true', help='create set edges')
@@ -20,7 +23,7 @@ args = parser.parse_args()
 
 
 importer = GraphImporter(args.db, args.commitEvery)
-if args.clear or True:
+if args.clear:
   importer.delete_all()
 
 
@@ -121,11 +124,25 @@ def importfile(file):
     parser.parse(f)
     importer.finish()
 
+def import_cited():
+  import csv
+  with open(args.data_dir+'/cited.csv','r') as f:
+    for row in csv.reader(f, delimiter=','):
+      title = row[0]
+      doi = row[1]
+      cited = int(row[2])
+      r = importer.graph.cypher.execute('MATCH (n:Publication) WHERE n.title=~"{0}.*" RETURN count(n) as c'.format(title.replace('.','\\\\.')))
+      if r[0].c <= 0:
+        print title, cited
+  importer.finish()
+
+
 if __name__ == '__main__':
-  if not os.path.exists(args.data_dir):
-    os.makedirs(args.data_dir)
+  #if not os.path.exists(args.data_dir):
+  #  os.makedirs(args.data_dir)
 
-  files = [f for f in listdir(args.data_dir) if isfile(join(args.data_dir, f)) and f.endswith('dblp.xml.gz')]
+  #files = [f for f in listdir(args.data_dir) if isfile(join(args.data_dir, f)) and f.endswith('dblp.xml.gz')]
 
-  for f in files:
-    importfile(join(args.data_dir,f))
+  #for f in files:
+  #  importfile(join(args.data_dir,f))
+  import_cited()

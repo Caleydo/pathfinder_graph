@@ -14,7 +14,7 @@ import itertools
 
 datapath = '/vagrant_data/'
 
-graph = Graph("http://127.0.0.1:7474/db/data/")
+graph = Graph("http://127.0.0.1:7475/db/data/")
 graph.delete_all()
 
 graph.cypher.run("CREATE INDEX ON :_Network_Node(id)")
