@@ -1,6 +1,9 @@
 {
   "name": "pathfinder_graph",
   "version": "0.0.1",
+  "dependencies": {
+    "caleydo_server": "*"
+  },
   "peerDependencies": {
     "caleydo_server": "*"
   },
