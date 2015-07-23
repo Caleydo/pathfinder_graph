@@ -161,7 +161,7 @@ class NodeAsyncTask(SocketTask):
       'Content-type': 'application/json',
       'Accept': 'application/json'
       }
-    args = { k : json.dumps(v) if type(v) is dict else v for k,v in self.q.iteritems()}
+    args = { k : json.dumps(v) if isinstance(v, dict) else v for k,v in self.q.iteritems()}
     print args
     args = urllib.urlencode(args)
     url = self.to_url(args)
