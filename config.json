@@ -1,0 +1,6 @@
+{
+  "port" : 7474,
+  "host" : "localhost",
+  "url" : "http://${host}:${port}/db/data/"
+}
+
