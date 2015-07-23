@@ -12,13 +12,11 @@ app = Flask(__name__)
 sockets = Sockets(app)
 
 class Config(object):
-  def __init__(self, config_file):
-    print config_file
-    with open(config_file, 'r') as f:
-      r = json.load(f)
-    self.raw = r
-    sett = r.get('settings',dict())
-    c = configview('pathway')
+  def __init__(self, id, raw):
+    self.id = id
+    self.raw = raw
+    sett = raw.get('settings',dict())
+    c = configview('pathfinder_graph')
     self.port = sett.get('port',c.port)
     self.host = sett.get('host', c.host)
     self.url = sett.get('url','http://'+self.host+':'+str(self.port))
@@ -30,10 +28,7 @@ class Config(object):
     #by default inline ConsistsOfEdges
     self.inline = sett.get('inline', dict(inline='ConsistsOfEdge',undirectional=False,flag='_isSetEdge',aggregate='pathways',toaggregate='id',type='Edge'))
 
-configs = dict()
-config_dir = configview('caleydo').clientDir+'/external/caleydo_pathfinder/uc/'
-for f in os.listdir(config_dir):
-  configs[f.replace('.json','')] = Config(os.path.join(config_dir,f))
+    self.client_conf = configview('pathfinder.uc').get(id)
 
 config = None
 
@@ -41,7 +36,7 @@ config = None
 def resolve_usecase():
   global config
   uc = request.cookies.get('uc','dblp')
-  config = configs[uc]
+  config = Config(uc, configview('pathfinder_graph.uc').get(uc))
 
 def resolve_db():
   graph = Graph(config.url + "/db/data/")
@@ -49,7 +44,7 @@ def resolve_db():
 
 @app.route('/config.json')
 def get_config():
-  return jsonify(config.raw)
+  return jsonify(config.client_conf)
 
 def preform_search(s, limit=20, label = None, prop = 'name'):
   if label is None:
