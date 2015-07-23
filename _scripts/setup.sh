@@ -37,6 +37,9 @@ function fixplugin {
 
   #create the link to the plugin itself
   if [ ! -e "${dbdir}/plugins/${pluginname}" ] ; then
+    #remove the shared link and create a real one
+    rm -r ${dbdir}/plugins
+    mkdir -p ${dbdir}/plugins
     ln -s "${basedir}/${pluginname}" "${dbdir}/plugins/"
   fi
 
@@ -48,8 +51,8 @@ function createdb {
   local name=${1:-vis}
   local port=${2:-7475}
   local db=${dbprefix}${name}
-  if [ -e db ] ; then
-    return
+  if [ -d ${db}d ] ; then
+    return 0
   fi
   #clone db
   ../scripts/clone_neo4j.sh ${name} ${port}
@@ -71,5 +74,5 @@ function createdb {
 }
 
 createdb dblp 7474
-#createdb pathways 7475
-#createdb dot 7476
+createdb pathways 7475
+createdb dot 7476
