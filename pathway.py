@@ -13,7 +13,7 @@ class Config(object):
   def __init__(self, id, raw):
     self.id = id
     self.raw = raw
-    sett = raw.get('settings',dict())
+    sett = raw
     c = configview('pathfinder_graph')
     self.port = sett.get('port',c.port)
     self.host = sett.get('host', c.host)
@@ -34,10 +34,12 @@ config = None
 def update_config(args):
   global config
   uc = args.get('uc','dblp')
+  print args, uc
   config = Config(uc, configview('pathfinder_graph.uc').get(uc))
 
 @app.before_request
 def resolve_usecase():
+  print 'before'
   update_config(request.args)
 
 def resolve_db():

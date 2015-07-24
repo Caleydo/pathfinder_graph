@@ -13,13 +13,18 @@ define(['../caleydo_web/main', '../caleydo_web/event'],function(C, events) {
   }
   C.extendClass(ServerSearch, events.EventHandler);
 
+  function getGetParam(name){
+     if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
+        return decodeURIComponent(name[1]);
+  }
+
   function uc() {
-    return C.hash.getProp('uc', 'dblp');
+    return getGetParam('uc') ||C.hash.getProp('uc', 'dblp');
   }
 
   ServerSearch.prototype.resolveConfig = function() {
-    return C.getAPIJSON('/pathway/config.json?uc='+uc);
-  }
+    return C.getAPIJSON('/pathway/config.json?uc='+uc());
+  };
 
   ServerSearch.prototype.onMessage = function(msg) {
     this.fire(msg.type, msg.data);
