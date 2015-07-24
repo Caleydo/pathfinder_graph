@@ -30,11 +30,15 @@ class Config(object):
 
 config = None
 
+
+def update_config(args):
+  global config
+  uc = args.get('uc','dblp')
+  config = Config(uc, configview('pathfinder_graph.uc').get(uc))
+
 @app.before_request
 def resolve_usecase():
-  global config
-  uc = request.cookies.get('uc','dblp')
-  config = Config(uc, configview('pathfinder_graph.uc').get(uc))
+  update_config(request.args)
 
 def resolve_db():
   graph = Graph(config.url + "/db/data/")
@@ -258,6 +262,8 @@ def websocket_query(ws):
     data = json.loads(msg)
     t = data['type']
     payload = data['data']
+
+    update_config(payload)
 
     if current_query is not None:
       current_query.abort()
