@@ -3,13 +3,11 @@ import httplib, urllib
 import json
 from py2neo import Graph
 from flask import Flask, request, Response, jsonify
-from flask_sockets import Sockets
-import threading
-import os
 from caleydo_server.config import view as configview
+import caleydo_server.websocket as ws
 
 app = Flask(__name__)
-sockets = Sockets(app)
+websocket = ws.Socket(app)
 
 class Config(object):
   def __init__(self, id, raw):
@@ -135,8 +133,8 @@ class NodeAsyncTask(SocketTask):
     super(NodeAsyncTask, self).__init__(socket_ns)
     self.q = q
     self.conn = httplib.HTTPConnection(config.host, config.port)
-    self.shutdown = threading.Event()
-    self.t = threading.Thread(target=self.stream)
+    from threading import Event
+    self.shutdown = Event()
 
   def abort(self):
     if self.shutdown.isSet():
@@ -169,7 +167,7 @@ class NodeAsyncTask(SocketTask):
     body = ''
     self.conn.request('GET', url, body, headers)
     self.send_start()
-    self.t.start()
+    self.stream()
 
   def stream(self):
     response = self.conn.getresponse()
@@ -251,7 +249,7 @@ class Neighbors(NodeAsyncTask):
 
 current_query = None
 
-@sockets.route('/query')
+@websocket.route('/query')
 def websocket_query(ws):
   global current_query
   while True:
