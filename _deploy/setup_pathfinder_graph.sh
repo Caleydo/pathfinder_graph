@@ -1,16 +1,7 @@
 #!/usr/bin/env bash
 
-function ensure_in_vm {
-  if [ "`whoami`" != "vagrant" ] ; then
-    echo "this command should be executed within the VM: aborting"
-    exit 1
-  fi
-}
-
-ensure_in_vm
-
 #search for the right parent directory
-while [ ! -f "Vagrantfile" ]
+while [[ ! -f "run.sh" ]] && [[ ! -f "Vagrantfile" ]]
 do
   cd ..
 done
@@ -21,7 +12,7 @@ basedir=`pwd`
 
 baseurl="https://googledrive.com/host/0B7lah7E3BqlAfmNnQ3ptNUhtbG1fWklkemVGc0xnZkNyZ21lUi15aFlIb3NSZ2FWOTR3NHM/"
 
-dbprefix="/home/vagrant/neo4j_"
+dbprefix="/home/`whoami`/neo4j_"
 
 function sedeasy {
   sed -i "s/$(echo $1 | sed -e 's/\([[\/.*]\|\]\)/\\&/g')/$(echo $2 | sed -e 's/[\/&]/\\&/g')/g" $3
@@ -70,7 +61,7 @@ function createdb {
   mkdir -p "${db}d/data/graph.db"
   tar -xzf ${datafile} -C "${db}d/data/graph.db"
   #fix permissions
-  chown -R vagrant:vagrant ${db}d/data/graph.db
+  chown -R `whoami` ${db}d/data/graph.db
 }
 
 createdb dblp 7474
