@@ -292,7 +292,7 @@ def to_query(msg):
   constraint = {'context': 'node', '$contains' : config.node_label}
 
   #TODO generate from config
-  directions = dict(config.irections)
+  directions = dict(config.directions)
   inline = config.inline
 
   if q is not None:
