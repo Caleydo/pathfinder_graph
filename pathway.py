@@ -260,6 +260,8 @@ def websocket_query(ws):
   global current_query
   while True:
     msg = ws.receive()
+    if msg is None:
+      continue
     print msg
     data = json.loads(msg)
     t = data['type']
