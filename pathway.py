@@ -290,7 +290,7 @@ def to_query(msg):
   constraint = {'context': 'node', '$contains' : config.node_label}
 
   #TODO generate from config
-  directions = config.directions
+  directions = dict(config.irections)
   inline = config.inline
 
   if q is not None:
@@ -298,7 +298,6 @@ def to_query(msg):
 
   args['constraints'] = dict(c=constraint,dir=directions,inline=inline,acyclic=True)
   if just_network:
-    directions = dict(directions)
     del directions[inline['inline']]
     c = args['constraints']
     del c['inline']
@@ -312,11 +311,10 @@ def to_neigbors_query(msg):
     'node': node
   }
  #TODO generate from config
-  directions = config.directions
+  directions = dict(config.directions)
   inline = config.inline
   args['constraints'] = dict(dir=directions,inline=inline,acyclic=True)
   if just_network:
-    directions = dict(directions)
     del directions[inline['inline']]
     c = args['constraints']
     del c['inline']
