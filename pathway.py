@@ -101,7 +101,7 @@ def parse_incremental_json(text, on_chunk):
   open_braces = 0
   l = len(text)
 
-  if text[act] == '[' or text[act] == ',': #skip initial:
+  if l > 0 and (text[act] == '[' or text[act] == ','): #skip initial:
     act = 1
 
   start = act

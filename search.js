@@ -1,7 +1,7 @@
 /**
  * Created by sam on 13.03.2015.
  */
-define(['../caleydo_core/main', '../caleydo_core/event'],function(C, events) {
+define(['../caleydo_core/main', '../caleydo_core/event', '../caleydo_core/ajax'],function(C, events, ajax) {
   'use strict';
 
   function ServerSearch() {
@@ -23,7 +23,7 @@ define(['../caleydo_core/main', '../caleydo_core/event'],function(C, events) {
   }
 
   ServerSearch.prototype.resolveConfig = function() {
-    return C.getAPIJSON('/pathway/config.json?uc='+uc());
+    return ajax.getAPIJSON('/pathway/config.json?uc='+uc());
   };
 
   ServerSearch.prototype.onMessage = function(msg) {
@@ -103,9 +103,9 @@ define(['../caleydo_core/main', '../caleydo_core/event'],function(C, events) {
       this.search_cache[nodeType+'.'+prop] = cache;
     }
     if (cache && query in cache) {
-      return C.resolved(cache[query]);
+      return Promise.resolve(cache[query]);
     }
-    return C.getAPIJSON('/pathway/search', {q: query, prop: prop, label: nodeType, uc : uc()}).then(function (data) {
+    return ajax.getAPIJSON('/pathway/search', {q: query, prop: prop, label: nodeType, uc : uc()}).then(function (data) {
       cache[query] = data.results;
       return data.results;
     });
