@@ -75,7 +75,7 @@ function managedb {
   local db=${dbprefix}${name}
   local cmd=${2:-stop}
 
-  ${db}.sh ${cmd}
+  (exec ${db} ${cmd})
 }
 
 function uninstalldb {
