@@ -70,6 +70,22 @@ function createdb {
   chown -R `whoami` ${db}d/data/graph.db
 }
 
+function updatedb {
+  local name=${1:-vis}
+  local db=${dbprefix}${name}
+
+  #download the data
+  local datafile="neo4j_${name}.tar.gz"
+  #download if not existing
+  wget --timestamping -O ${datafile} "${baseurl}/${datafile}"
+  #unzip
+  rm -r "${db}d/data/graph.db"
+  mkdir -p "${db}d/data/graph.db"
+  tar -xzf ${datafile} -C "${db}d/data/graph.db"
+  #fix permissions
+  chown -R `whoami` ${db}d/data/graph.db
+}
+
 function managedb {
   local name=${1:-vis}
   local db=${dbprefix}${name}
@@ -116,6 +132,10 @@ update)
   ;;
 uninstall)
   uninstall
+  ;;
+updatedb)
+  shift
+  updatedb $@
   ;;
 *)
   setup
