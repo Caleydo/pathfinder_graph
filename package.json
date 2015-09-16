@@ -25,7 +25,7 @@
     "dependencies": {
       "python": {
         "py2neo": ">=2.0.4",
-        "pydotplus": ">=2.0.2"
+        "pydotplus": "==2.0.2"
       }
     }
   },
