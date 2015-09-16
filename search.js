@@ -13,13 +13,8 @@ define(['../caleydo_core/main', '../caleydo_core/event', '../caleydo_core/ajax']
   }
   C.extendClass(ServerSearch, events.EventHandler);
 
-  function getGetParam(name){
-     if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
-        return decodeURIComponent(name[1]);
-  }
-
   function uc() {
-    return getGetParam('uc') ||C.hash.getProp('uc', 'dblp');
+    return C.hash.getProp('uc', C.param.getProp('uc', 'dblp'));
   }
 
   ServerSearch.prototype.resolveConfig = function() {
