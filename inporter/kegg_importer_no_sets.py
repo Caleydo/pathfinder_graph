@@ -11,8 +11,10 @@ from import_utils import GraphImporter
 
 parser = argparse.ArgumentParser(description='KEGG Importer')
 parser.add_argument('--db', default='http://192.168.50.52:7475/db/data/')
-parser.add_argument('--data_dir', '-d', default='/vagrant_data/kegg/',
-                   help='data directory')
+parser.add_argument('--data_dir', '-d', default='./pws/',
+                    help='data directory')
+# parser.add_argument('--data_dir', '-d', default='/vagrant_data/kegg/',
+#                    help='data directory')
 parser.add_argument('--clear', action='store_true', help='clear the graph')
 parser.add_argument('--commitEvery', type=int, default=100, help='commit every x steps')
 args = parser.parse_args()
@@ -40,17 +42,27 @@ if len(files) == 0:
 
     files = [f for f in listdir(args.data_dir) if isfile(join(args.data_dir, f))]
 
-compoundList = kegg_list('compound').read()
-compoundNames = dict()
-entries = compoundList.split('\n')
 
-for entry in entries[:len(entries) - 1]:
-    e = entry.split('\t')
-    cpdId = e[0][4:]
-    lastIndex = e[1].find(';')
-    name = e[1][:lastIndex] if lastIndex >= 0 else e[1]
-    compoundNames[cpdId] = name
+def getNodeNames(type):
+    list = kegg_list(type).read()
+    names = dict()
+    entries = list.split('\n')
 
+    for entry in entries[:len(entries) - 1]:
+        e = entry.split('\t')
+        nodeId = e[0][4:]
+        lastIndex = e[1].find(';')
+        name = e[1][:lastIndex] if lastIndex >= 0 else e[1]
+        lastIndex = name.find(',')
+        name = name[:lastIndex] if lastIndex >= 0 else name
+
+        names[nodeId] = name
+
+    return names
+
+
+geneNames = getNodeNames("hsa")
+compoundNames = getNodeNames("compound")
 
 # Maps from the extracted node id (e.g. EGFR) to the Node Object
 nodes = set()
@@ -77,8 +89,12 @@ for filename in files:
             for geneName in gene.name.split(' '):
                 gene_id = geneName[4:]
                 if gene_id not in nodes:
-                    importer.add_node(['_Network_Node', 'Gene'], gene_id, {'name': gene_id, 'idType': 'ENTREZ',
-                                                                           'url': 'http://www.kegg.jp/dbget-bin/www_bget?hsa:' + gene_id})
+                    gName = gene_id
+                    if gene_id in geneNames:
+                        gName = geneNames[gene_id]
+                    importer.add_node(['_Network_Node', 'Gene'], gene_id,
+                                      {'name': gName, 'idType': 'ENTREZ',
+                                       'url': 'http://www.kegg.jp/dbget-bin/www_bget?hsa:' + gene_id})
 
                     # node = Node('NETWORK_NODE', 'Gene', id=name, idType='GENE_SYMBOL', name=name)
 
@@ -98,8 +114,11 @@ for filename in files:
             for compoundName in compound.name.split(' '):
                 compound_id = compoundName[4:]
                 if compound_id not in nodes:
+                    cpdName = compound_id
+                    if compound_id in compoundNames:
+                        cpdName = compoundNames[compound_id]
                     importer.add_node(['_Network_Node', 'Compound'], compound_id,
-                                      {'name': compoundNames[compound_id], 'idType': 'KEGG_COMPOUND',
+                                      {'name': cpdName, 'idType': 'KEGG_COMPOUND',
                                        'url': 'http://www.kegg.jp/dbget-bin/www_bget?cpd:' + compound_id})
 
                     # node = Node('NETWORK_NODE', 'Compound', id=name, idType='KEGG_COMPOUND', name=name)
