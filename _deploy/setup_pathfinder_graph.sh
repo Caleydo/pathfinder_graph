@@ -71,6 +71,7 @@ function createdb {
 }
 
 function updatedb {
+<<<<<<< HEAD
   local name=${1:-vis}
   local db=${dbprefix}${name}
 
@@ -80,6 +81,18 @@ function updatedb {
   wget --timestamping -O ${datafile} "${baseurl}/${datafile}"
   #unzip
   rm -r "${db}d/data/graph.db"
+=======
+ local name=${1:-vis}
+ local db=${dbprefix}${name}
+  if [ -d ${db}d/data/graph.db ] ; then
+    rm -r ${db}d/data/graph.db
+  fi
+  
+  local datafile="neo4j_${name}.tar.gz"
+  wget -O ${datafile} "${baseurl}/${datafile}"
+  
+  #unzip
+>>>>>>> d01430cea95bf73e584961ab3c29669b49626649
   mkdir -p "${db}d/data/graph.db"
   tar -xzf ${datafile} -C "${db}d/data/graph.db"
   #fix permissions
@@ -134,8 +147,12 @@ uninstall)
   uninstall
   ;;
 updatedb)
+<<<<<<< HEAD
   shift
   updatedb $@
+=======
+  updatedb "$2"
+>>>>>>> d01430cea95bf73e584961ab3c29669b49626649
   ;;
 *)
   setup
