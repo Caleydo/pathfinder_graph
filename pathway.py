@@ -141,6 +141,9 @@ class NodeAsyncTask(SocketTask):
     self.conn = httplib.HTTPConnection(config.host, config.port)
     from threading import Event
     self.shutdown = Event()
+    self._sent_nodes = set()
+    self._sent_relationships = set()
+    self._graph = resolve_db()
 
   def abort(self):
     if self.shutdown.isSet():
@@ -156,6 +159,28 @@ class NodeAsyncTask(SocketTask):
 
   def send_done(self):
    pass
+
+  def send_node(self, node):
+    nid = node['id']
+    if nid in self._sent_nodes:
+      return #already sent during this query
+    gnode = self._graph.node(nid)
+    print 'send_node '+str(nid)
+    self.send_impl('new_node', dict(id=nid,labels=map(str,gnode.labels),properties=gnode.properties))
+    self._sent_nodes.add(nid)
+
+  def send_relationship(self, rel):
+    rid = rel['id']
+    if rid < 0: #its a fake one
+      return
+    if rid in self._sent_relationships:
+      return #already sent during this query
+    grel = self._graph.relationship(rid)
+    print 'send_relationship '+str(rid)
+    base = rel.copy()
+    base['properties'] = grel.properties
+    self.send_impl('new_relationship', dict(id=rid,properties=grel.properties))
+    self._sent_relationships.add(rid)
 
   def to_url(self, args):
     return '/caleydo/kShortestPaths/?{0}'.format(args)
@@ -215,6 +240,11 @@ class Query(NodeAsyncTask):
     if self.shutdown.isSet():
       return
     self.paths.append(path)
+    #check for all nodes in the path and load and send their missing data
+    for n in path['nodes']:
+      self.send_node(n)
+    for e in path['edges']:
+      self.send_relationship(e)
     print 'sending path ',len(self.paths)
     self.send_impl('query_path',dict(query=self.q,path=path,i=len(self.paths)))
 
@@ -239,6 +269,7 @@ class Neighbors(NodeAsyncTask):
     if self.shutdown.isSet():
       return
     self.neighbors.append(neighbor)
+    self.send_node(neighbor)
     print 'sending neighbor ',len(self.neighbors)
     self.send_impl('neighbor_neighbor',dict(node=self.node,neighbor=neighbor,i=len(self.neighbors)))
 
@@ -274,12 +305,17 @@ def websocket_query(ws):
     if t == 'query':
       current_query = Query(to_query(payload), ws)
     elif t == 'neighbor':
-      current_query = Neighbors(to_neigbors_query(payload), ws)
+      current_query = Neighbors(to_neighbors_query(payload), ws)
     current_query.run()
 
 def to_query(msg):
-  k = msg.get('k',1)
-  max_depth = msg.get('maxDepth', 10)
+  """
+  converts the given message to kShortestPath query arguments
+  :param msg:
+  :return:
+  """
+  k = msg.get('k',1) #number of paths
+  max_depth = msg.get('maxDepth', 10) #max length
   just_network = msg.get('just_network_edges', False)
   q = msg['query']
   print q
@@ -306,13 +342,18 @@ def to_query(msg):
 
   return args
 
-def to_neigbors_query(msg):
+def to_neighbors_query(msg):
+  """
+  based on the message converts to kShortestPaths args
+  :param msg: the incoming message, supporting 'just_network_edges' and 'node' attribute
+  :return:
+  """
   just_network = msg.get('just_network_edges', False)
   node = int(msg.get('node'))
   args = {
     'node': node
   }
- #TODO generate from config
+  #TODO generate from config
   directions = dict(config.directions)
   inline = config.inline
   args['constraints'] = dict(dir=directions,inline=inline,acyclic=True)
@@ -326,7 +367,10 @@ def to_neigbors_query(msg):
 
 @app.route("/summary")
 def get_graph_summary():
-
+  """
+  api for getting a graph summary (nodes, edge, set count)
+  :return:
+  """
   graph = resolve_db()
 
   def compute():
@@ -357,6 +401,10 @@ def create_get_sets_query(sets):
 
 @app.route("/setinfo")
 def get_set_info():
+  """
+  delivers set information for a given list of set ids
+  :return:
+  """
   sets = request.args.getlist('sets[]')
   print sets
   if len(sets) == 0:
@@ -375,7 +423,7 @@ def get_set_info():
 
       response[record.id] = {
         'id': record.uid,
-        'labels': [str(l) for l in node.labels],
+        'labels': map(str, node.labels),
         'properties': node.properties
       }
     print 'sent setinfo for ',sets
@@ -383,7 +431,7 @@ def get_set_info():
 
   return Response(compute(), mimetype='application/json')
 
-def create(*args, **kwargs):
+def create():
   """
    entry point of this plugin
   """

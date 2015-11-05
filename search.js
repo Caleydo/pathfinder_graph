@@ -10,6 +10,8 @@ define(['../caleydo_core/main', '../caleydo_core/event', '../caleydo_core/ajax']
     this._initialMessage = [];
 
     this.search_cache = {};
+    this._nodelookup = {};
+    this._rellookup = {};
   }
   C.extendClass(ServerSearch, events.EventHandler);
 
@@ -21,7 +23,40 @@ define(['../caleydo_core/main', '../caleydo_core/event', '../caleydo_core/ajax']
     return ajax.getAPIJSON('/pathway/config.json?uc='+uc());
   };
 
+  ServerSearch.prototype.extendPath = function(path) {
+    var that = this;
+    return {
+      nodes: path.nodes.map(function(n) { return that.extendNode(n); }),
+      edges: path.edges.map(function(n) { return that.extendRel(n); })
+    }
+  };
+  ServerSearch.prototype.extendNode = function(node) {
+    if (node.id in this._nodelookup) {
+      return this._nodelookup[node.id];
+    }
+    return node;
+  };
+  ServerSearch.prototype.extendRel = function(node) {
+    if (node.id in this._rellookup) {
+      return this._rellookup[node.id];
+    }
+    return node;
+  };
+
   ServerSearch.prototype.onMessage = function(msg) {
+    if (msg.type === 'query_path') {
+      msg.data.path = this.extendPath(msg.data.path);
+    } else if (msg.type === 'neighbor_neighbor') {
+      msg.data.neighbor = this.extendNode(msg.data.neighbor);
+    } else if (msg.type === 'new_node') {
+      var node = msg.data;
+      this._nodelookup[node.id] = node;
+      return;
+    } else if (msg.type === 'new_relationship') {
+      var node = msg.data;
+      this._rellookup[node.id] = node;
+      return;
+    }
     this.fire(msg.type, msg.data);
   };
   function asMessage(type, msg) {
