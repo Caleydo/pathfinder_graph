@@ -332,6 +332,10 @@ def to_query(msg):
     'maxDepth': max_depth,
   }
 
+  min_length = msg.get('minLength', 0)
+  if min_length > 0:
+    args['minLength'] = min_length
+
   constraint = {'context': 'node', '$contains' : config.node_label}
 
   #TODO generate from config
