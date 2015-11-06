@@ -164,9 +164,13 @@ class NodeAsyncTask(SocketTask):
     nid = node['id']
     if nid in self._sent_nodes:
       return #already sent during this query
-    gnode = self._graph.node(nid)
     print 'send_node '+str(nid)
-    self.send_impl('new_node', dict(id=nid,labels=map(str,gnode.labels),properties=gnode.properties))
+    try:
+      gnode = self._graph.node(nid)
+      self.send_impl('new_node', dict(id=nid,labels=map(str,gnode.labels),properties=gnode.properties))
+    except ValueError:
+      pass
+      self.send_impl('new_node', node)
     self._sent_nodes.add(nid)
 
   def send_relationship(self, rel):
@@ -175,10 +179,13 @@ class NodeAsyncTask(SocketTask):
       return
     if rid in self._sent_relationships:
       return #already sent during this query
-    grel = self._graph.relationship(rid)
     print 'send_relationship '+str(rid)
     base = rel.copy()
-    base['properties'] = grel.properties
+    try:
+      grel = self._graph.relationship(rid)
+      base['properties'] = grel.properties
+    except ValueError:
+      pass
     self.send_impl('new_relationship', dict(id=rid,properties=grel.properties))
     self._sent_relationships.add(rid)
 
