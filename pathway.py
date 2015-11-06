@@ -186,7 +186,7 @@ class NodeAsyncTask(SocketTask):
       base['properties'] = grel.properties
     except ValueError:
       pass
-    self.send_impl('new_relationship', dict(id=rid,properties=grel.properties))
+    self.send_impl('new_relationship', base)
     self._sent_relationships.add(rid)
 
   def to_url(self, args):
