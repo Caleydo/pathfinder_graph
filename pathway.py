@@ -5,9 +5,15 @@ from py2neo import Graph
 from flask import Flask, request, Response, jsonify
 from caleydo_server.config import view as configview
 import caleydo_server.websocket as ws
+import caleydo_server.util as utils
 
 app = Flask(__name__)
 websocket = ws.Socket(app)
+
+import memcache
+mc = memcache.Client(['127.0.0.1:11211'], debug=0)
+
+mc_prefix='pathways_'
 
 class Config(object):
   def __init__(self, id, raw):
@@ -49,6 +55,25 @@ def resolve_db():
 @app.route('/config.json')
 def get_config():
   return jsonify(config.client_conf)
+
+def lookup_gene_id(dss, node):
+  labels = map(str, node.labels)
+  for ds in dss:
+    for n in ds['mapping_nodes']:
+      if n['node_label'] in labels:
+        return node.properties[n['id_property']]
+  return None
+
+def add_datasets(prop, node):
+  if 'datasets' not in config.client_conf:
+    return
+  import pathfinder_ccle.ccle as ccle
+  import json
+  gene_id = lookup_gene_id(config.client_conf['datasets'], node)
+  if gene_id:
+    data = ccle.boxplot_api2(gene_id)
+    for k,v in data.iteritems():
+      prop[k] = v
 
 def preform_search(s, limit=20, label = None, prop = 'name'):
   if label is None:
@@ -134,6 +159,10 @@ class SocketTask(object):
     d = json.dumps(dict(type=t,data=msg))
     self.socket_ns.send(d)
 
+  def send_str(self, t, s):
+    d = '{ "type": "'+t+'", "data": '+s+'}'
+    self.socket_ns.send(d)
+
 class NodeAsyncTask(SocketTask):
   def __init__(self, q, socket_ns):
     super(NodeAsyncTask, self).__init__(socket_ns)
@@ -165,12 +194,20 @@ class NodeAsyncTask(SocketTask):
     if nid in self._sent_nodes:
       return #already sent during this query
     print 'send_node '+str(nid)
-    try:
-      gnode = self._graph.node(nid)
-      self.send_impl('new_node', dict(id=nid,labels=map(str,gnode.labels),properties=gnode.properties))
-    except ValueError:
-      pass
-      self.send_impl('new_node', node)
+    key = mc_prefix+config.id+'_n'+str(nid)
+    obj = mc.get(key)
+    if not obj:
+      try:
+        gnode = self._graph.node(nid)
+        props = gnode.properties.copy()
+        add_datasets(props, gnode)
+        obj = dict(id=nid,labels=map(str,gnode.labels),properties=props)
+      except ValueError:
+        obj = node
+      obj = utils.to_json(obj)
+      mc.set(key, obj)
+
+    self.send_str('new_node', obj)
     self._sent_nodes.add(nid)
 
   def send_relationship(self, rel):
@@ -180,13 +217,18 @@ class NodeAsyncTask(SocketTask):
     if rid in self._sent_relationships:
       return #already sent during this query
     print 'send_relationship '+str(rid)
-    base = rel.copy()
-    try:
-      grel = self._graph.relationship(rid)
-      base['properties'] = grel.properties
-    except ValueError:
-      pass
-    self.send_impl('new_relationship', base)
+    key = mc_prefix+config.id+'_r'+str(rid)
+    obj = mc.get(key)
+    if not obj:
+      obj = rel.copy()
+      try:
+        grel = self._graph.relationship(rid)
+        obj['properties'] = grel.properties
+      except ValueError:
+        pass
+      obj = json.dumps(obj)
+      mc.set(key, obj)
+    self.send_str('new_relationship', obj)
     self._sent_relationships.add(rid)
 
   def to_url(self, args):
