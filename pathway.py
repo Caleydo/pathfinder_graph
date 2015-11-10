@@ -463,24 +463,30 @@ def get_set_info():
   if len(sets) == 0:
     return jsonify()
 
-  graph = resolve_db()
+
 
   def compute():
-    query = create_get_sets_query(sets)
-    records = graph.cypher.execute(query)
+    key = mc_prefix+config.id+'setinfo'+'_'.join(sets)
+    obj = mc.get(key)
+    if not obj:
+      graph = resolve_db()
+      query = create_get_sets_query(sets)
+      records = graph.cypher.execute(query)
 
-    response = dict()
+      response = dict()
 
-    for record in records:
-      node = record.n
+      for record in records:
+        node = record.n
 
-      response[record.id] = {
-        'id': record.uid,
-        'labels': map(str, node.labels),
-        'properties': node.properties
-      }
-    print 'sent setinfo for ',sets
-    yield json.dumps(response)
+        response[record.id] = {
+          'id': record.uid,
+          'labels': map(str, node.labels),
+          'properties': node.properties
+        }
+      print 'sent setinfo for ',sets
+      obj = json.dumps(response)
+      mc.set(key, obj)
+    yield obj
 
   return Response(compute(), mimetype='application/json')
 
