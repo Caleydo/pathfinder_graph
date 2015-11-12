@@ -40,12 +40,12 @@ config = None
 def update_config(args):
   global config
   uc = args.get('uc','dblp')
-  print args, uc
+  #print args, uc
   config = Config(uc, configview('pathfinder_graph.uc').get(uc))
 
 @app.before_request
 def resolve_usecase():
-  print 'before'
+  #print 'before'
   update_config(request.args)
 
 def resolve_db():
@@ -459,34 +459,41 @@ def get_set_info():
   :return:
   """
   sets = request.args.getlist('sets[]')
-  print sets
+  #print sets
   if len(sets) == 0:
     return jsonify()
 
-
+  def to_key(s):
+    return mc_prefix+config.id+'setinfo'+'_'+s
 
   def compute():
-    key = mc_prefix+config.id+'setinfo'+'_'.join(sets)
-    obj = mc.get(key)
-    if not obj:
+    response = dict()
+    to_query = []
+    for s in sets:
+      obj = mc.get(to_key(s))
+      if obj:
+        response[s] = obj
+      else:
+        to_query.append(s)
+    if len(to_query) >= 0: #all cached
       graph = resolve_db()
-      query = create_get_sets_query(sets)
+      query = create_get_sets_query(to_query)
       records = graph.cypher.execute(query)
-
-      response = dict()
 
       for record in records:
         node = record.n
-
-        response[record.id] = {
+        obj = json.dumps({
           'id': record.uid,
           'labels': map(str, node.labels),
           'properties': node.properties
-        }
-      print 'sent setinfo for ',sets
-      obj = json.dumps(response)
-      mc.set(key, obj)
-    yield obj
+        })
+        #cache for next time
+        mc.set(to_key(record.id), obj)
+        response[record.id] = obj
+
+    #print 'sent setinfo for ',sets
+    #manually create combined version avoiding partial json loads
+    yield '{'+','.join(('"'+k+'": '+v for k,v in response.iteritems()))+'}'
 
   return Response(compute(), mimetype='application/json')
 
