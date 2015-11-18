@@ -189,7 +189,7 @@ class NodeAsyncTask(SocketTask):
   def send_done(self):
    pass
 
-  def send_node(self, node):
+  def send_node(self, node, **kwargs):
     nid = node['id']
     if nid in self._sent_nodes:
       return #already sent during this query
@@ -204,8 +204,14 @@ class NodeAsyncTask(SocketTask):
         obj = dict(id=nid,labels=map(str,gnode.labels),properties=props)
       except ValueError:
         obj = node
-      obj = utils.to_json(obj)
-      mc.set(key, obj)
+      sobj = utils.to_json(obj)
+      mc.set(key, sobj)
+
+    if len(kwargs) > 0:
+      #we have additional stuff to transfer use a custom one
+      for k,v in kwargs.iteritems():
+        obj[k] = v
+      sobj = utils.to_json(obj)
 
     self.send_str('new_node', obj)
     self._sent_nodes.add(nid)
@@ -318,7 +324,7 @@ class Neighbors(NodeAsyncTask):
     if self.shutdown.isSet():
       return
     self.neighbors.append(neighbor)
-    self.send_node(neighbor)
+    self.send_node(neighbor, _edge=neighbor['_edge'])
     print 'sending neighbor ',len(self.neighbors)
     self.send_impl('neighbor_neighbor',dict(node=self.node,neighbor=neighbor,i=len(self.neighbors)))
 
