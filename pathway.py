@@ -342,6 +342,28 @@ class Neighbors(NodeAsyncTask):
   def to_url(self, args):
     return '/caleydo/kShortestPaths/neighborsOf/{0}?{1}'.format(str(self.node),args)
 
+class Find(NodeAsyncTask):
+  def __init__(self, q, socket_ws):
+    super(Find, self).__init__(q, socket_ws)
+    self.matches = []
+
+  def send_incremental(self, found):
+    if self.shutdown.isSet():
+      return
+    self.matches.append(found)
+    self.send_node(found)
+    print 'sending match ',len(self.matches)
+    self.send_impl('found',dict(node=found,i=len(self.matches)))
+
+  def send_start(self):
+    self.send_impl('found_start',dict())
+
+  def send_done(self):
+    print 'sending done ',len(self.matches)
+    self.send_impl('found_done',dict(matches=self.matches)) #,paths=self.paths))
+
+  def to_url(self, args):
+    return '/caleydo/kShortestPaths/find?{0}'.format(args)
 
 current_query = None
 
@@ -365,6 +387,8 @@ def websocket_query(ws):
       current_query = Query(to_query(payload), ws)
     elif t == 'neighbor':
       current_query = Neighbors(to_neighbors_query(payload), payload.get('tag',None), ws)
+    elif t == 'find':
+      current_query = Find(to_find_query(payload), ws)
     current_query.run()
 
 def to_query(msg):
@@ -425,6 +449,27 @@ def to_neighbors_query(msg):
     c = args['constraints']
     del c['inline']
 
+  return args
+
+
+def to_find_query(msg):
+  k = msg.get('k',1) #number of paths
+  q = msg['query']
+
+  args = {
+    'k': k,
+  }
+
+  min_length = msg.get('minLength', 0)
+  if min_length > 0:
+    args['minLength'] = min_length
+
+  constraint = {'context': 'node', '$contains' : config.node_label}
+
+  if q is not None:
+    constraint = {'$and' : [constraint, q] }
+
+  args['constraints'] = dict(c=constraint)
   return args
 
 

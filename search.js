@@ -44,16 +44,19 @@ define(['../caleydo_core/main', '../caleydo_core/event', '../caleydo_core/ajax']
   };
 
   ServerSearch.prototype.onMessage = function(msg) {
+    var node;
     if (msg.type === 'query_path') {
       msg.data.path = this.extendPath(msg.data.path);
     } else if (msg.type === 'neighbor_neighbor') {
       msg.data.neighbor = this.extendNode(msg.data.neighbor);
+    } else if (msg.type === 'found') {
+      msg.data.node = this.extendNode(msg.data.node);
     } else if (msg.type === 'new_node') {
-      var node = msg.data;
+      node = msg.data;
       this._nodelookup[node.id] = node;
       return;
     } else if (msg.type === 'new_relationship') {
-      var node = msg.data;
+      node = msg.data;
       this._rellookup[node.id] = node;
       return;
     }
@@ -105,6 +108,19 @@ define(['../caleydo_core/main', '../caleydo_core/event', '../caleydo_core/ajax']
       minLength : minLength || 0
     };
     this.send('query', msg);
+  };
+
+  /**
+   * finds a set of nodes given a query
+   * @param query
+   * @param k
+   */
+  ServerSearch.prototype.find = function(query, k) {
+    var msg = {
+      k : k || 10,
+      query : query ? query.serialize() : null
+    };
+    this.send('find', msg);
   };
 
   /**
