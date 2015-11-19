@@ -107,11 +107,20 @@ define(['../caleydo_core/main', '../caleydo_core/event', '../caleydo_core/ajax']
     this.send('query', msg);
   };
 
-  ServerSearch.prototype.loadNeighbors = function(node_id, just_network_edges) {
+  /**
+   *
+   * @param node_id
+   * @param just_network_edges boolean whether just network edges should be considered
+   * @param tag additional tag to transfer, identifying the query
+   */
+  ServerSearch.prototype.loadNeighbors = function(node_id, just_network_edges, tag) {
     var msg = {
       node : node_id,
       just_network_edges : just_network_edges || false
     };
+    if (tag) {
+      msg.tag = tag;
+    }
     this.send('neighbor', msg);
   };
 

@@ -318,9 +318,10 @@ class Query(NodeAsyncTask):
 
 
 class Neighbors(NodeAsyncTask):
-  def __init__(self, q, socket_ws):
+  def __init__(self, q, tag, socket_ws):
     super(Neighbors, self).__init__(q, socket_ws)
     self.node = q['node']
+    self.tag = tag
     self.neighbors = []
 
   def send_incremental(self, neighbor):
@@ -329,14 +330,14 @@ class Neighbors(NodeAsyncTask):
     self.neighbors.append(neighbor)
     self.send_node(neighbor, _edge=neighbor['_edge'])
     print 'sending neighbor ',len(self.neighbors)
-    self.send_impl('neighbor_neighbor',dict(node=self.node,neighbor=neighbor,i=len(self.neighbors)))
+    self.send_impl('neighbor_neighbor',dict(node=self.node,tag=self.tag,neighbor=neighbor,i=len(self.neighbors)))
 
   def send_start(self):
-    self.send_impl('neighbor_start',dict(node=self.node))
+    self.send_impl('neighbor_start',dict(node=self.node,tag=self.tag))
 
   def send_done(self):
     print 'sending done ',len(self.neighbors)
-    self.send_impl('neighbor_done',dict(node=self.node,neighbors=self.neighbors)) #,paths=self.paths))
+    self.send_impl('neighbor_done',dict(node=self.node,tag=self.tag,neighbors=self.neighbors)) #,paths=self.paths))
 
   def to_url(self, args):
     return '/caleydo/kShortestPaths/neighborsOf/{0}?{1}'.format(str(self.node),args)
@@ -363,7 +364,7 @@ def websocket_query(ws):
     if t == 'query':
       current_query = Query(to_query(payload), ws)
     elif t == 'neighbor':
-      current_query = Neighbors(to_neighbors_query(payload), ws)
+      current_query = Neighbors(to_neighbors_query(payload), payload.get('tag',None), ws)
     current_query.run()
 
 def to_query(msg):
