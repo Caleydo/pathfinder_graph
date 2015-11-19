@@ -195,8 +195,9 @@ class NodeAsyncTask(SocketTask):
       return #already sent during this query
     print 'send_node '+str(nid)
     key = mc_prefix+config.id+'_n'+str(nid)
-    obj = mc.get(key)
-    if not obj:
+    sobj = mc.get(key)
+    obj = None
+    if not sobj:
       try:
         gnode = self._graph.node(nid)
         props = gnode.properties.copy()
@@ -208,12 +209,14 @@ class NodeAsyncTask(SocketTask):
       mc.set(key, sobj)
 
     if len(kwargs) > 0:
+      if obj is None:
+        obj = json.loads(sobj)
       #we have additional stuff to transfer use a custom one
       for k,v in kwargs.iteritems():
         obj[k] = v
       sobj = utils.to_json(obj)
 
-    self.send_str('new_node', obj)
+    self.send_str('new_node', sobj)
     self._sent_nodes.add(nid)
 
   def send_relationship(self, rel):
