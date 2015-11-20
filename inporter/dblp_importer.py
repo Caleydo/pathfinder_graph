@@ -13,8 +13,8 @@ from import_utils import GraphImporter
 
 
 parser = argparse.ArgumentParser(description='DBLP Importer')
-parser.add_argument('--db', default="http://192.168.56.1:7475/db/data/")
-parser.add_argument('--data_dir', '-d', default='/vagrant_data', help='data directory')
+parser.add_argument('--db', default="http://localhost:7474/db/data/")
+parser.add_argument('--data_dir', '-d', default='/vagrant/_data', help='data directory')
 parser.add_argument('--undirected', action='store_true', help='create undirected graph')
 parser.add_argument('--sets', action='store_true', help='create set edges')
 parser.add_argument('--clear', action='store_true', help='clear the graph')
@@ -59,8 +59,8 @@ class DBLPImporter(xml.sax.ContentHandler):
   def create_node(self, elem):
     id = elem['key']
 
-    if 'journals/tvcg/' not in id and 'conf/chi' not in id: #filter to just tvcg journal
-      return
+    #if 'journals/tvcg/' not in id and 'conf/chi' not in id: #filter to just tvcg journal
+    #  return
 
     where = u'TVCG' if 'journals/tvcg/' in id else u'CHI'
     kind = u'Journal' if 'journals/tvcg/' in id else u'ConferencePaper'
@@ -141,8 +141,8 @@ if __name__ == '__main__':
   #if not os.path.exists(args.data_dir):
   #  os.makedirs(args.data_dir)
 
-  #files = [f for f in listdir(args.data_dir) if isfile(join(args.data_dir, f)) and f.endswith('dblp.xml.gz')]
+  files = [f for f in listdir(args.data_dir) if isfile(join(args.data_dir, f)) and f.endswith('dblp.xml.gz')]
 
-  #for f in files:
-  #  importfile(join(args.data_dir,f))
-  import_cited()
+  for f in files:
+    importfile(join(args.data_dir,f))
+  #import_cited()
