@@ -328,9 +328,11 @@ class Neighbors(NodeAsyncTask):
     if self.shutdown.isSet():
       return
     self.neighbors.append(neighbor)
-    self.send_node(neighbor, _edge=neighbor['_edge'])
+    edge = neighbor['_edge']
+    self.send_node(neighbor)
+    self.send_relationship(edge)
     print 'sending neighbor ',len(self.neighbors)
-    self.send_impl('neighbor_neighbor',dict(node=self.node,tag=self.tag,neighbor=neighbor,i=len(self.neighbors)))
+    self.send_impl('neighbor_neighbor',dict(node=self.node,tag=self.tag,neighbor=neighbor,edge=edge, i=len(self.neighbors)))
 
   def send_start(self):
     self.send_impl('neighbor_start',dict(node=self.node,tag=self.tag))

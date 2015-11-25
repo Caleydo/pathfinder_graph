@@ -49,6 +49,7 @@ define(['../caleydo_core/main', '../caleydo_core/event', '../caleydo_core/ajax']
       msg.data.path = this.extendPath(msg.data.path);
     } else if (msg.type === 'neighbor_neighbor') {
       msg.data.neighbor = this.extendNode(msg.data.neighbor);
+      msg.data.edge = msg.data.neighbor._edge = this.extendRel(msg.data.edge);
     } else if (msg.type === 'found') {
       msg.data.node = this.extendNode(msg.data.node);
     } else if (msg.type === 'new_node') {
