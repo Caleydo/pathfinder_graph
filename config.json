@@ -11,6 +11,10 @@
         "CoAuthor": "out",
         "AuthoredBy": "both"
       },
+      "directions_neighbor": {
+        "CoAuthor": "both",
+        "AuthoredBy": "both"
+      },
       "inline": {
         "inline": "AuthoredBy",
         "type": "CoAuthor",
@@ -29,6 +33,10 @@
       "set_label": "_Set_Node",
       "directions": {
         "LinkTo": "out",
+        "ConsistsOfEdge": "both"
+      },
+      "directions_neighbor": {
+        "LinkTo": "both",
         "ConsistsOfEdge": "both"
       },
       "inline": {
@@ -50,6 +58,10 @@
       "set_label": "_Set_Node",
       "directions": {
         "Edge": "out",
+        "ConsistsOf": "both"
+      },
+      "directions_neighbor": {
+        "Edge": "both",
         "ConsistsOf": "both"
       },
       "inline": {

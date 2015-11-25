@@ -29,6 +29,7 @@ class Config(object):
     self.set_label = sett.get('set_label','_Set_Node')
 
     self.directions = sett.get('directions', dict(Edge='out',ConsistsOfEdge='both')) #both ConsistsOf for the reversal
+    self.directions_neighbor = sett.get('directions_neighbor',self.directions) #both ConsistsOf for the reversal
     #by default inline ConsistsOfEdges
     self.inline = sett.get('inline', dict(inline='ConsistsOfEdge',undirectional=False,flag='_isSetEdge',aggregate='pathways',toaggregate='id',type='Edge'))
 
@@ -443,7 +444,7 @@ def to_neighbors_query(msg):
     'node': node
   }
   #TODO generate from config
-  directions = dict(config.directions)
+  directions = dict(config.directions_neighbor)
   inline = config.inline
   args['constraints'] = dict(dir=directions,inline=inline,acyclic=True)
   if just_network:
