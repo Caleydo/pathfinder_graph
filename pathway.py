@@ -93,14 +93,14 @@ def preform_search(s, limit=20, label = None, prop = 'name'):
 
   graph = resolve_db()
 
-  query = 'MATCH (n:{0}) WHERE n.{1} =~ "(?i){2}" RETURN id(n) as id, n.{1} as name, n.id as nid ORDER BY n.{1} LIMIT {3}'.format(label, prop, s, limit)
+  query = 'MATCH (n:{0}) WHERE n.{1} =~ "(?i){2}" RETURN id(n) as id, n.{1} as name, n.id as nid, labels(n) as labels ORDER BY n.{1} LIMIT {3}'.format(label, prop, s, limit)
 
   print query
 
   records = graph.cypher.execute(query)
 
   def convert(result):
-    return dict(value=result.id, label=result.name, id=result.nid)
+    return dict(value=result.id, label=result.name, id=result.nid, labels=result.labels)
 
   return [convert(r) for r in records]
 
