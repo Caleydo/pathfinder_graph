@@ -53,8 +53,9 @@ def getNodeNames(type):
         nodeId = e[0][4:]
         lastIndex = e[1].find(';')
         name = e[1][:lastIndex] if lastIndex >= 0 else e[1]
-        lastIndex = name.find(',')
-        name = name[:lastIndex] if lastIndex >= 0 else name
+        if type == "hsa":
+          lastIndex = name.find(',')
+          name = name[:lastIndex] if lastIndex >= 0 else name
 
         names[nodeId] = name
 

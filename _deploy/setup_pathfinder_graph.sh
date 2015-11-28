@@ -86,6 +86,20 @@ function updatedb {
   chown -R `whoami` ${db}d/data/graph.db
 }
 
+function exportdb {
+
+
+  local name=${1:-vis}
+  local db=${dbprefix}${name}
+  local datafile="neo4j_${name}.tar.gz"
+#  managedb ${1} stop
+
+  local dataDir=$(pwd)
+  cd "${db}d/data/graph.db/"
+  tar -zcvf ${datafile} *
+  mv ${datafile} "${dataDir}/${datafile}"
+
+}
 function managedb {
   local name=${1:-vis}
   local db=${dbprefix}${name}
@@ -136,6 +150,10 @@ uninstall)
 updatedb)
   shift
   updatedb $@
+  ;;
+exportdb)
+  shift
+  exportdb $@
   ;;
 *)
   setup
