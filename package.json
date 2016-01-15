@@ -27,6 +27,13 @@
         "py2neo": ">=2.0.4",
         "pydotplus": "==2.0.2"
       }
+    },
+    "scripts": {
+      "pre_start": [
+        "sudo service memcached start",
+        "~/neo4j_dblp start",
+        "~/neo4j_pathways start"
+      ]
     }
   },
   "publishConfig": {

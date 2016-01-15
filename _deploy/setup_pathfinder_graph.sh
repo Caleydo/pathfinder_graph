@@ -6,6 +6,35 @@ do
   cd ..
 done
 
+function install_neo4j {
+  ##########################
+  # neo4j
+  # following debian.neo4j.org
+
+  if [ $(dpkg-query -W -f='${Status}' neo4j 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
+    #neo4j add to packages
+    wget -O - http://debian.neo4j.org/neotechnology.gpg.key| sudo apt-key add - # Import our signing key
+    echo 'deb http://debian.neo4j.org/repo stable/' | sudo tee /etc/apt/sources.list.d/neo4j.list # Create an Apt sources.list file
+
+    sudo apt-get update
+    sudo apt-get install -y neo4j
+
+    #TODO change the neo4j-server.properties e.g using grep or sed
+    #listens to all connections even from outside by uncomenting a config line
+    sudo sed -i '/^#.*0.0.0.0/s/^#//' /etc/neo4j/neo4j-server.properties
+    #disable authorization by default
+    sudo sed -i '/dbms.security.auth_enabled=true/s/dbms.security.auth_enabled=false/' /etc/neo4j/neo4j-server.properties
+    #stop server:
+    sudo service neo4j-service stop
+    #access the browser interface via: http://localhost:7474/
+
+    #disable autostart
+    sudo update-rc.d -f neo4j-service disable
+  else
+    echo "neo4j already installed"
+  fi
+}
+
 
 mkdir -p _data/
 cd _data
@@ -68,11 +97,15 @@ function createdb {
   tar -xzf ${datafile} -C "${db}d/data/graph.db"
   #fix permissions
   chown -R `whoami` ${db}d/data/graph.db
+
+  managedb ${name} start
 }
 
 function updatedb {
   local name=${1:-vis}
   local db=${dbprefix}${name}
+
+  managedb ${name} stop
 
   #download the data
   local datafile="neo4j_${name}.tar.gz"
@@ -84,6 +117,8 @@ function updatedb {
   tar -xzf ${datafile} -C "${db}d/data/graph.db"
   #fix permissions
   chown -R `whoami` ${db}d/data/graph.db
+
+  managedb ${name} start
 }
 
 function exportdb {
@@ -117,6 +152,8 @@ function uninstalldb {
 }
 
 function setup {
+  install_neo4j
+
   createdb dblp 7474
   createdb pathways 7475
   createdb dot 7476
