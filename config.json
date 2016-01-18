@@ -75,6 +75,29 @@
         "toaggregate": "id"
       }
     },
+    "marclab": {
+      "port": 7477,
+      "node_label": "_Network_Node",
+      "set_label": "_Set_Node",
+      "directions": {
+        "Edge": "out",
+        "ConsistsOf": "both"
+      },
+      "directions_neighbor": {
+        "Edge": "both",
+        "ConsistsOf": "both"
+      },
+      "inline": {
+        "inline": "ConsistsOf",
+        "type": "Edge",
+        "undirectional": false,
+        "flag": "_isSetEdge",
+        "aggregate": {
+          "_Set_Node": "labels"
+        },
+        "toaggregate": "id"
+      }
+    },
     "metabolomics": {
       "port": 7475,
       "node_label": "_Network_Node",

@@ -155,6 +155,10 @@ exportdb)
   shift
   exportdb $@
   ;;
+fixplugin)
+  shift
+  fixplugin $2
+  ;;
 *)
   setup
   ;;
