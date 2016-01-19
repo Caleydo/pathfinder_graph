@@ -20,27 +20,39 @@ if args.clear or True:
 with open(args.data_file) as f:
   doc = json.load(f)
 
+  set_ids = dict()
+  current_set_id = 0;
+
   nodes = doc["nodes"]
 
   for node in nodes:
     if node["Label"] is not None:
+
+      if node["Label"] in set_ids:
+        setId = set_ids[node["Label"]]
+      else:
+        current_set_id += 1
+        setId = str(current_set_id)
+        set_ids[node["Label"]] = setId
+
       importer.add_node(['_Network_Node', 'Structure'], str(node["StructureID"]),
-                      {'name': str(node["StructureID"]), 'labels': [str(node["Label"])]})
-      importer.add_node(['_Set_Node', 'Label'], str(node["Label"]),
+                        {'name': str(node["StructureID"]), 'labels': [setId]})
+      importer.add_node(['_Set_Node', 'Label'], setId,
                         {'name': str(node["Label"])})
-      importer.add_edge('ConsistsOf', str(node["Label"]), str(node["StructureID"]), {}, 'Label')
+      importer.add_edge('ConsistsOf', setId, str(node["StructureID"]), {}, 'Label')
     else:
       importer.add_node(['_Network_Node', 'Structure'], str(node["StructureID"]),
-                      {'name': str(node["StructureID"]), 'labels': []})
+                        {'name': str(node["StructureID"]), 'labels': []})
 
   edges = doc["edges"]
 
   for edge in edges:
     importer.add_edge('Edge', str(edge["SourceStructureID"]), str(edge["TargetStructureID"]), {'_isNetworkEdge': True,
-                                                                                     'Type': edge["Type"], 'Label': edge["Label"]})
+                                                                                               'Type': edge["Type"],
+                                                                                               'Label': edge["Label"]})
 
 
-  # importer.add_node(['_Network_Node', 'Compound'], compound_id,
-  #                   {'name': cpdName, 'idType': 'KEGG_COMPOUND',
-  #                    'url': 'http://www.kegg.jp/dbget-bin/www_bget?cpd:' + compound_id})
-  # importer.add_edge('Edge', gene_id, substrate_id, {'_isNetworkEdge': True})
+    # importer.add_node(['_Network_Node', 'Compound'], compound_id,
+    #                   {'name': cpdName, 'idType': 'KEGG_COMPOUND',
+    #                    'url': 'http://www.kegg.jp/dbget-bin/www_bget?cpd:' + compound_id})
+    # importer.add_edge('Edge', gene_id, substrate_id, {'_isNetworkEdge': True})
