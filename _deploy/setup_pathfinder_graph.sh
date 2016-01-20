@@ -192,9 +192,9 @@ exportdb)
   shift
   exportdb $@
   ;;
-fixplugin)
+createdb)
   shift
-  fixplugin $2
+  createdb $@
   ;;
 *)
   setup
