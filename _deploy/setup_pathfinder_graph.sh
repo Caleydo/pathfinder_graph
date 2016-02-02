@@ -156,7 +156,8 @@ function setup {
 
   createdb dblp 7474
   createdb pathways 7475
-  createdb dot 7476
+  #createdb dot 7476
+  createdb marclab 7476
 }
 
 function update {
@@ -164,13 +165,15 @@ function update {
   #no data update yet
   managedb dblp restart
   managedb pathways restart
-  managedb dot restart
+  #managedb dot restart
+  managedb marclab restart
 }
 
 function uninstall {
   uninstalldb dblp
   uninstalldb pathways
-  uninstalldb pathways
+  #uninstalldb dot
+  uninstalldb marclab
 
   #remove plugin
   rm -f "${baseurl}/${pluginname}"

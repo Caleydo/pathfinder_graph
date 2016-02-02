@@ -32,7 +32,8 @@
       "pre_start": [
         "sudo service memcached start",
         "~/neo4j_dblp start",
-        "~/neo4j_pathways start"
+        "~/neo4j_pathways start",
+        "~/neo4j_marklab start"
       ]
     }
   },
