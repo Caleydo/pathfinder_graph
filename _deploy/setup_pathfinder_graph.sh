@@ -157,7 +157,7 @@ function setup {
   createdb dblp 7474
   createdb pathways 7475
   #createdb dot 7476
-  createdb marclab 7476
+  createdb marclab 7477
 }
 
 function update {
