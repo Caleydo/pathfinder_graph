@@ -31,7 +31,7 @@ class Config(object):
     self.directions = sett.get('directions', dict(Edge='out',ConsistsOfEdge='both')) #both ConsistsOf for the reversal
     self.directions_neighbor = sett.get('directions_neighbor',self.directions) #both ConsistsOf for the reversal
     #by default inline ConsistsOfEdges
-    self.inline = sett.get('inline', dict(inline='ConsistsOfEdge',undirectional=False,flag='_isSetEdge',aggregate='pathways',toaggregate='id',type='Edge'))
+    self.inline = sett.get('inline', dict(inline='ConsistsOfEdge',undirectional=False,flag='_isSetEdge',aggregate=dict(pathways='pathways'),toaggregate='id',type='Edge'))
 
     self.client_conf = configview('pathfinder.uc').get(id)
 
