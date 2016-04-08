@@ -8,7 +8,7 @@ import caleydo_server.websocket as ws
 import caleydo_server.util as utils
 
 import logging
-_log = logging.getLogger('pathfinder_ccle.' + __name__)
+_log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 websocket = ws.Socket(app)
