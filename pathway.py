@@ -7,6 +7,9 @@ from caleydo_server.config import view as configview
 import caleydo_server.websocket as ws
 import caleydo_server.util as utils
 
+import logging
+_log = logging.getLogger('pathfinder_ccle.' + __name__)
+
 app = Flask(__name__)
 websocket = ws.Socket(app)
 
@@ -69,7 +72,6 @@ def add_datasets(prop, node):
   if 'datasets' not in config.client_conf:
     return
   import pathfinder_ccle.ccle as ccle
-  import json
   gene_id = lookup_gene_id(config.client_conf['datasets'], node)
   if gene_id:
     data = ccle.boxplot_api2(gene_id)
@@ -77,13 +79,14 @@ def add_datasets(prop, node):
       prop[k] = v
 
 def preform_search(s, limit=20, label = None, prop = 'name'):
-  if label is None:
-    label = config.node_label
   """ performs a search for a given search query
   :param s:
   :param limit: maximal number of results
   :return:
   """
+  if label is None:
+    label = config.node_label
+
   if len(s) < 2:  # too short search query
     return []
 
@@ -95,7 +98,7 @@ def preform_search(s, limit=20, label = None, prop = 'name'):
 
   query = 'MATCH (n:{0}) WHERE n.{1} =~ "(?i){2}" RETURN id(n) as id, n.{1} as name, n.id as nid, labels(n) as labels ORDER BY n.{1} LIMIT {3}'.format(label, prop, s, limit)
 
-  print query
+  _log.debug('search query: %s', query)
 
   records = graph.cypher.execute(query)
 
@@ -105,7 +108,7 @@ def preform_search(s, limit=20, label = None, prop = 'name'):
   return [convert(r) for r in records]
 
 
-@app.route("/search")
+@app.route('/search')
 def find_node():
   s = request.args.get('q', '')
   limit = request.args.get('limit', 20)
@@ -194,7 +197,7 @@ class NodeAsyncTask(SocketTask):
     nid = node['id']
     if nid in self._sent_nodes:
       return #already sent during this query
-    print 'send_node '+str(nid)
+    _log.debug('send_node '+str(nid))
     key = mc_prefix+config.id+'_n'+str(nid)
     sobj = mc.get(key)
     obj = None
@@ -226,7 +229,7 @@ class NodeAsyncTask(SocketTask):
       return
     if rid in self._sent_relationships:
       return #already sent during this query
-    print 'send_relationship '+str(rid)
+    _log.debug('send_relationship '+str(rid))
     key = mc_prefix+config.id+'_r'+str(rid)
     obj = mc.get(key)
     if not obj:
@@ -250,10 +253,10 @@ class NodeAsyncTask(SocketTask):
       'Accept': 'application/json'
       }
     args = { k : json.dumps(v) if isinstance(v, dict) else v for k,v in self.q.iteritems()}
-    print args
+    _log.debug(args)
     args = urllib.urlencode(args)
     url = self.to_url(args)
-    print url
+    _log.debug(url)
     body = ''
     self.conn.request('GET', url, body, headers)
     self.send_start()
@@ -262,10 +265,10 @@ class NodeAsyncTask(SocketTask):
   def stream(self):
     response = self.conn.getresponse()
     if self.shutdown.isSet():
-      print 'aborted early'
+      _log.info('aborted early')
       return
     content_length = int(response.getheader('Content-Length', '0'))
-    print 'waiting for response: '+str(content_length)
+    _log.debug('waiting for response: '+str(content_length))
     # Read data until we've read Content-Length bytes or the socket is closed
     l = 0
     data = ''
@@ -278,7 +281,7 @@ class NodeAsyncTask(SocketTask):
       data = parse_incremental_json(data,self.send_incremental)
 
     if self.shutdown.isSet():
-      print 'aborted'
+      _log.debug('aborted')
       return
 
     parse_incremental_json(data,self.send_incremental)
@@ -288,7 +291,7 @@ class NodeAsyncTask(SocketTask):
 
     self.conn.close()
     self.shutdown.set()
-    print 'end'
+    _log.debug('end')
 
 class Query(NodeAsyncTask):
   def __init__(self, q, socket_ns):
@@ -304,14 +307,14 @@ class Query(NodeAsyncTask):
       self.send_node(n)
     for e in path['edges']:
       self.send_relationship(e)
-    print 'sending path ',len(self.paths)
+    _log.debug('sending paths %d',len(self.paths))
     self.send_impl('query_path',dict(query=self.q,path=path,i=len(self.paths)))
 
   def send_start(self):
     self.send_impl('query_start',dict(query=self.q))
 
   def send_done(self):
-    print 'sending done ',len(self.paths)
+    _log.debug('sending done %d paths',len(self.paths))
     self.send_impl('query_done',dict(query=self.q)) #,paths=self.paths))
 
   def to_url(self, args):
@@ -332,14 +335,14 @@ class Neighbors(NodeAsyncTask):
     edge = neighbor['_edge']
     self.send_node(neighbor)
     self.send_relationship(edge)
-    print 'sending neighbor ',len(self.neighbors)
+    _log.debug('sending %d neighbors',len(self.neighbors))
     self.send_impl('neighbor_neighbor',dict(node=self.node,tag=self.tag,neighbor=neighbor,edge=edge, i=len(self.neighbors)))
 
   def send_start(self):
     self.send_impl('neighbor_start',dict(node=self.node,tag=self.tag))
 
   def send_done(self):
-    print 'sending done ',len(self.neighbors)
+    _log.debug('sending %d neighbors done',len(self.neighbors))
     self.send_impl('neighbor_done',dict(node=self.node,tag=self.tag,neighbors=self.neighbors)) #,paths=self.paths))
 
   def to_url(self, args):
@@ -355,14 +358,14 @@ class Find(NodeAsyncTask):
       return
     self.matches.append(found)
     self.send_node(found)
-    print 'sending match ',len(self.matches)
+    _log.debug('sending %d matches',len(self.matches))
     self.send_impl('found',dict(node=found,i=len(self.matches)))
 
   def send_start(self):
     self.send_impl('found_start',dict())
 
   def send_done(self):
-    print 'sending done ',len(self.matches)
+    _log.debug('sending %d matches done',len(self.matches))
     self.send_impl('found_done',dict(matches=self.matches)) #,paths=self.paths))
 
   def to_url(self, args):
@@ -377,7 +380,7 @@ def websocket_query(ws):
     msg = ws.receive()
     if msg is None:
       continue
-    print msg
+    _log.debug(msg)
     data = json.loads(msg)
     t = data['type']
     payload = data['data']
@@ -404,7 +407,7 @@ def to_query(msg):
   max_depth = msg.get('maxDepth', 10) #max length
   just_network = msg.get('just_network_edges', False)
   q = msg['query']
-  print q
+  _log.debug(q)
 
   args = {
     'k': k,
@@ -510,7 +513,7 @@ def create_get_sets_query(sets):
   return 'MATCH (n:{1}) WHERE n.id in [{0}] RETURN n, n.id as id, id(n) as uid'.format(', '.join(set_queries), config.set_label)
 
 
-@app.route("/setinfo")
+@app.route('/setinfo')
 def get_set_info():
   """
   delivers set information for a given list of set ids
