@@ -1,8 +1,10 @@
 {
   "name": "pathfinder_graph",
+  "description": "Pathfinder Python Server plugin for communicating with Neo4j",
   "version": "0.0.1",
   "license" : "SEE LICENSE IN LICENSE",
   "repository": "Caleydo/pathfinder_graph",
+  "homepage": "http://www.caleydo.org/tools/pathfinder/",
   "dependencies": {
   },
   "peerDependencies": {
@@ -12,6 +14,7 @@
     "postinstall": "./_scripts/setup.sh"
   },
   "caleydo": {
+    "type": "app",
     "plugins": {
       "python": [
         {
