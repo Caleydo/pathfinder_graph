@@ -4,9 +4,11 @@ services:
     depends_on:
       - db_memcached
       - db_neo4j_dblp
+      - db_neo4j_pathways
     links:
       - 'db_memcached:memcached'
       - 'db_neo4j_dblp:neo4j_dblp'
+      - 'db_neo4j_pathways:neo4j_pathways'
   db_memcached:
     image: memcached:1.4-alpine
   db_neo4j_dblp:
@@ -15,5 +17,12 @@ services:
     - db_neo4j_dblp:/data
     environment:
     - NEO4J_AUTH=none
+  db_neo4j_pathways:
+    image: 922145058410.dkr.ecr.eu-central-1.amazonaws.com/phovea/neo4j:latest
+    volumes:
+    - db_neo4j_pathways:/data
+    environment:
+    - NEO4J_AUTH=none
 volumes:
   db_neo4j_dblp:
+  db_neo4j_pathways:
