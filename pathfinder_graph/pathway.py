@@ -36,7 +36,7 @@ class Config(object):
     #by default inline ConsistsOfEdges
     self.inline = sett.get('inline', dict(inline='ConsistsOfEdge',undirectional=False,flag='_isSetEdge',aggregate=dict(pathways='pathways'),toaggregate='id',type='Edge'))
 
-    self.client_conf = configview('pathfinder.uc').get(id)
+    self.client_conf = configview('pathfinder_graph.client').get(id)
 
 config = None
 
