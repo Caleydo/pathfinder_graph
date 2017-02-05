@@ -3,3 +3,6 @@ services:
   db_memcached:
     ports:
       - '11211:11211'
+  db_neo4j_dblp:
+    ports:
+      - '7474:7474'

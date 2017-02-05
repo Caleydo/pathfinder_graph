@@ -3,7 +3,15 @@ services:
   _host:
     depends_on:
       - db_memcached
+      - image
     links:
       - 'db_memcached:memcached'
+      - 'db_neo4j_dblp:neo4j_dblp'
   db_memcached:
     image: memcached:1.4-alpine
+  db_neo4j_dblp:
+    image: 922145058410.dkr.ecr.eu-central-1.amazonaws.com/phovea/neo4j:latest
+    volumes:
+    - db_neo4j_dblp:/data
+volumes:
+  db_neo4j_dblp:
