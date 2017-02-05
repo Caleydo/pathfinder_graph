@@ -1,12 +1,10 @@
-__author__ = 'Samuel Gratzl'
-
 from py2neo import Graph
 from collections import namedtuple
 
 pathways = Graph('http://localhost:7475/db/data/')
 mapping = Graph('http://localhost:7474/db/data/')
 
-Gene = namedtuple('Gene','uid, id')
+Gene = namedtuple('Gene', 'uid, id')
 
 unmapped = []
 mapped = []

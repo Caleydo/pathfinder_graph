@@ -1,4 +1,4 @@
-import json, os
+import json
 import argparse
 from import_utils import GraphImporter
 
@@ -21,7 +21,7 @@ with open(args.data_file) as f:
   doc = json.load(f)
 
   set_ids = dict()
-  current_set_id = 0;
+  current_set_id = 0
 
   nodes = doc["nodes"]
 
@@ -50,7 +50,6 @@ with open(args.data_file) as f:
     importer.add_edge('Edge', str(edge["SourceStructureID"]), str(edge["TargetStructureID"]), {'_isNetworkEdge': True,
                                                                                                'Type': edge["Type"],
                                                                                                'Label': edge["Label"]})
-
 
     # importer.add_node(['_Network_Node', 'Compound'], compound_id,
     #                   {'name': cpdName, 'idType': 'KEGG_COMPOUND',
