@@ -1,7 +1,7 @@
 import httplib
 import urllib
 import json
-from py2neo import Graph, authenticate
+from py2neo import Graph
 from phovea_server.ns import Namespace, request, Response, jsonify
 from phovea_server.config import view as configview
 import phovea_server.websocket as ws
@@ -251,9 +251,9 @@ class NodeAsyncTask(SocketTask):
       try:
         grel = self._graph.relationship(rid)
         obj['properties'] = grel.properties
-      except ValueError: # ignore not found ones
+      except ValueError:  # ignore not found ones
         pass
-      except IndexError: # ignore not found ones
+      except IndexError:  # ignore not found ones
         pass
       obj = json.dumps(obj)
       mc.set(key, obj)
