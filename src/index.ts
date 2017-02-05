@@ -32,6 +32,10 @@ function asMessage(type: string, msg: any) {
   return JSON.stringify({type, data: msg});
 }
 
+export function resolveConfig() {
+  return getAPIJSON(`/pathways/config.json`, {uc: uc()});
+}
+
 export default class ServerSearch extends EventHandler {
   static readonly EVENT_QUERY_PATH = 'query_path';
   static readonly EVENT_NEIGHBOR = 'neighbor_neighbor';
@@ -53,11 +57,7 @@ export default class ServerSearch extends EventHandler {
   private readonly nodeLookup = new Map<string, INode>();
   private readonly edgeLookup = new Map<string, IEdge>();
 
-  resolveConfig() {
-    return getAPIJSON(`/pathways/config.json`, {uc: uc()});
-  }
-
-  extendPath(path: IPath) {
+  private extendPath(path: IPath) {
     return {
       nodes: path.nodes.map((n) => this.extendNode(n)),
       edges: path.edges.map((n) => this.extendRel(n))
@@ -200,3 +200,12 @@ export default class ServerSearch extends EventHandler {
     return data.results;
   };
 }
+
+const instance = new ServerSearch();
+
+export const on = instance.on.bind(instance);
+export const off = instance.off.bind(instance);
+export const search = instance.search.bind(instance);
+export const loadNeighbors = instance.loadNeighbors.bind(instance);
+export const find = instance.find.bind(instance);
+export const loadQuery = instance.loadQuery.bind(instance);
