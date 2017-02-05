@@ -3,7 +3,7 @@ services:
   _host:
     depends_on:
       - db_memcached
-      - image
+      - db_neo4j_dblp
     links:
       - 'db_memcached:memcached'
       - 'db_neo4j_dblp:neo4j_dblp'
