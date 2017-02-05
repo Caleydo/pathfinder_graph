@@ -1,11 +1,12 @@
-import httplib, urllib
+import httplib
+import urllib
 import json
 from py2neo import Graph
 from phovea_server.ns import Namespace, request, Response, jsonify
 from phovea_server.config import view as configview
 import phovea_server.websocket as ws
 import phovea_server.util as utils
-
+import memcache
 import logging
 
 _log = logging.getLogger(__name__)
@@ -13,9 +14,6 @@ c = configview('pathfinder_graph')
 
 app = Namespace(__name__)
 websocket = ws.Socket(app)
-
-import memcache
-
 mc = memcache.Client([c.memcached], debug=0)
 
 mc_prefix = 'pathways_'
@@ -107,8 +105,10 @@ def preform_search(s, limit=20, label=None, prop='name'):
 
   graph = resolve_db()
 
-  query = 'MATCH (n:{0}) WHERE n.{1} =~ "(?i){2}" RETURN id(n) as id, n.{1} as name, n.id as nid, labels(n) as labels ORDER BY n.{1} LIMIT {3}'.format(
-    label, prop, s, limit)
+  query = """
+  MATCH (n:{0}) WHERE n.{1} =~ "(?i){2}"
+  RETURN id(n) as id, n.{1} as name, n.id as nid, labels(n) as labels
+  ORDER BY n.{1} LIMIT {3}""".format(label, prop, s, limit)
 
   _log.debug('search query: %s', query)
 
@@ -262,10 +262,7 @@ class NodeAsyncTask(SocketTask):
     return '/caleydo/kShortestPaths/?{0}'.format(args)
 
   def run(self):
-    headers = {
-      'Content-type': 'application/json',
-      'Accept': 'application/json'
-    }
+    headers = {'Content-type': 'application/json', 'Accept': 'application/json'}
     args = {k: json.dumps(v) if isinstance(v, dict) else v for k, v in self.q.iteritems()}
     _log.debug(args)
     args = urllib.urlencode(args)
@@ -429,10 +426,7 @@ def to_query(msg):
   q = msg['query']
   _log.debug(q)
 
-  args = {
-    'k': k,
-    'maxDepth': max_depth,
-  }
+  args = dict(k=k, maxDepth=max_depth)
 
   min_length = msg.get('minLength', 0)
   if min_length > 0:
@@ -464,9 +458,7 @@ def to_neighbors_query(msg):
   """
   just_network = msg.get('just_network_edges', False)
   node = int(msg.get('node'))
-  args = {
-    'node': node
-  }
+  args = dict(node=node)
   # TODO generate from config
   directions = dict(config.directions_neighbor)
   inline = config.inline
@@ -483,9 +475,7 @@ def to_find_query(msg):
   k = msg.get('k', 1)  # number of paths
   q = msg['query']
 
-  args = {
-    'k': k,
-  }
+  args = dict(k=k)
 
   min_length = msg.get('minLength', 0)
   if min_length > 0:
@@ -565,11 +555,7 @@ def get_set_info():
 
       for record in records:
         node = record.n
-        obj = json.dumps({
-          'id': record.uid,
-          'labels': map(str, node.labels),
-          'properties': node.properties
-        })
+        obj = json.dumps(dict(id=record.uid, labels=map(str, node.labels), properties=node.properties))
         # cache for next time
         mc.set(to_key(record.id), obj)
         response[record.id] = obj
