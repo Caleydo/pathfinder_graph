@@ -220,7 +220,7 @@ class NodeAsyncTask(SocketTask):
         gnode = self._graph.node(nid)
         props = gnode.properties.copy()
         add_datasets(props, gnode)
-        obj = dict(id=nid, labels=map(str, gnode.labels), properties=props)
+        obj = dict(id=nid, labels=map(str, gnode.labels()), properties=props)
       except ValueError:
         obj = node
       sobj = utils.to_json(obj)
@@ -251,7 +251,9 @@ class NodeAsyncTask(SocketTask):
       try:
         grel = self._graph.relationship(rid)
         obj['properties'] = grel.properties
-      except ValueError:
+      except ValueError: # ignore not found ones
+        pass
+      except IndexError: # ignore not found ones
         pass
       obj = json.dumps(obj)
       mc.set(key, obj)
@@ -554,11 +556,11 @@ def get_set_info():
       records = graph.run(query)
 
       for record in records:
-        node = record.n
-        obj = json.dumps(dict(id=record.uid, labels=map(str, node.labels), properties=node.properties))
+        node = record['n']
+        obj = json.dumps(dict(id=record['uid'], labels=map(str, node.labels()), properties=node.properties))
         # cache for next time
-        mc.set(to_key(record.id), obj)
-        response[record.id] = obj
+        mc.set(to_key(record['id']), obj)
+        response[record['id']] = obj
 
     # print 'sent setinfo for ',sets
     # manually create combined version avoiding partial json loads
