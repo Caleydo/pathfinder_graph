@@ -33,7 +33,7 @@ function asMessage(type: string, msg: any) {
 }
 
 export function resolveConfig() {
-  return getAPIJSON(`/pathways/config.json`, {uc: uc()});
+  return getAPIJSON(`/pathway/config.json`, {uc: uc()});
 }
 
 export default class ServerSearch extends EventHandler {
