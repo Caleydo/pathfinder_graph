@@ -68,7 +68,7 @@ def get_config():
 
 
 def lookup_gene_id(dss, node):
-  labels = map(str, node.labels)
+  labels = map(str, node.labels())
   for ds in dss:
     for n in ds['mapping_nodes']:
       if n['node_label'] in labels:

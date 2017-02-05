@@ -6,7 +6,8 @@
     "githubAccount": "phovea",
     "modules": [
       "phovea_server",
-      "phovea_core"
+      "phovea_core",
+      "pathfinder_ccle"
     ],
     "extensions": [],
     "sextensions": [
