@@ -3,6 +3,8 @@
   "port": 7474,
   "host": "neo4j",
   "url": "http://${host}:${port}/db/data/",
+  "username": "neo4j",
+  "password": "neo4j",
   "uc": {
     "dblp": {
       "host": "neo4j_dblp",

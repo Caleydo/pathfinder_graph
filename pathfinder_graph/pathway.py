@@ -1,7 +1,7 @@
 import httplib
 import urllib
 import json
-from py2neo import Graph
+from py2neo import Graph, authenticate
 from phovea_server.ns import Namespace, request, Response, jsonify
 from phovea_server.config import view as configview
 import phovea_server.websocket as ws
@@ -26,6 +26,8 @@ class Config(object):
     sett = raw
     self.port = sett.get('port', c.port)
     self.host = sett.get('host', c.host)
+    self.username = sett.get('username', c.username)
+    self.password = sett.get('password', c.password)
     self.url = sett.get('url', 'http://' + self.host + ':' + str(self.port))
 
     self.node_label = sett.get('node_label', '_Network_Node')
@@ -58,6 +60,7 @@ def resolve_usecase():
 
 
 def resolve_db():
+  authenticate(config.host + ':' + str(config.port), config.username, config.password)
   graph = Graph(config.url + "/db/data/")
   return graph
 
