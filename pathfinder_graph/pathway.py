@@ -26,8 +26,6 @@ class Config(object):
     sett = raw
     self.port = sett.get('port', c.port)
     self.host = sett.get('host', c.host)
-    self.username = sett.get('username', c.username)
-    self.password = sett.get('password', c.password)
     self.url = sett.get('url', 'http://' + self.host + ':' + str(self.port))
 
     self.node_label = sett.get('node_label', '_Network_Node')
@@ -60,8 +58,7 @@ def resolve_usecase():
 
 
 def resolve_db():
-  authenticate(config.host + ':' + str(config.port), config.username, config.password)
-  graph = Graph(config.url + "/db/data/")
+  graph = Graph(config.url + '/db/data/')
   return graph
 
 
@@ -115,10 +112,10 @@ def preform_search(s, limit=20, label=None, prop='name'):
 
   _log.debug('search query: %s', query)
 
-  records = graph.cypher.execute(query)
+  records = graph.run(query)
 
   def convert(result):
-    return dict(value=result.id, label=result.name, id=result.nid, labels=result.labels)
+    return dict(value=result['id'], label=result['name'], id=result['nid'], labels=result['labels'])
 
   return [convert(r) for r in records]
 
@@ -503,16 +500,16 @@ def get_graph_summary():
 
   def compute():
     query = 'MATCH (n:{0}) RETURN COUNT(n) AS nodes'.format(config.node_label)
-    records = graph.cypher.execute(query)
-    num_nodes = records[0].nodes
+    records = graph.data(query)
+    num_nodes = records[0]['nodes']
 
     query = 'MATCH (n1:{0})-[e]->(n2:{0}) RETURN COUNT(e) AS edges'.format(config.node_label)
-    records = graph.cypher.execute(query)
-    num_edges = records[0].edges
+    records = graph.data(query)
+    num_edges = records[0]['edges']
 
     query = 'MATCH (n:{0}) RETURN COUNT(n) AS sets'.format(config.set_label)
-    records = graph.cypher.execute(query)
-    num_sets = records[0].sets
+    records = graph.data(query)
+    num_sets = records[0]['sets']
 
     yield json.dumps(dict(Nodes=num_nodes, Edges=num_edges, Sets=num_sets))
 
@@ -554,7 +551,7 @@ def get_set_info():
     if len(to_query) >= 0:  # all cached
       graph = resolve_db()
       query = create_get_sets_query(to_query)
-      records = graph.cypher.execute(query)
+      records = graph.run(query)
 
       for record in records:
         node = record.n
