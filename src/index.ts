@@ -1,7 +1,7 @@
 /**
  * Created by sam on 13.03.2015.
  */
-define(['../caleydo_core/main', '../caleydo_core/event', '../caleydo_core/ajax'],function(C, events, ajax) {
+define(['phovea_core/index', '../caleydo_core/event', '../caleydo_core/src/ajax'],function(C, events, ajax) {
   'use strict';
 
   function ServerSearch() {

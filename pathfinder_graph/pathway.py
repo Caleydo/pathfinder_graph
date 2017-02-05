@@ -2,15 +2,15 @@
 import httplib, urllib
 import json
 from py2neo import Graph
-from flask import Flask, request, Response, jsonify
-from caleydo_server.config import view as configview
-import caleydo_server.websocket as ws
-import caleydo_server.util as utils
+from phovea_server.ns import Namespace, request, Response, jsonify
+from phovea_server.config import view as configview
+import phovea_server.websocket as ws
+import phovea_server.util as utils
 
 import logging
 _log = logging.getLogger(__name__)
 
-app = Flask(__name__)
+app = Namespace(__name__)
 websocket = ws.Socket(app)
 
 import memcache
