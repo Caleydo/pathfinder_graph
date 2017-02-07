@@ -1,0 +1,5 @@
+-e git+https://github.com/phovea/phovea_server.git@develop#egg=phovea_server
+-e git+https://github.com/Caleydo/pathfinder_ccle.git@migrate#egg=pathfinder_ccle
+py2neo==3.1.2
+pydotplus==2.0.2
+python-memcached==1.58

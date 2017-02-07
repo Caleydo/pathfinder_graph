@@ -40,14 +40,14 @@ def import_it():
     paper_types = dict(C='Conference_Paper', T='TVCG_Journal_Paper', M='Miscellaneous')
 
     def clean_name(name):
-      return name.replace(u' ', u'_').replace(u',', u'_').replace(u'.', u'_').replace(u'__', u'_').strip().encode(
-        'ascii', 'ignore')
+      return name.replace(u' ', u'_').replace(u',', u'_').replace(u'.', u'_').replace(u'__', u'_').strip().encode('ascii', 'ignore')
 
     citations = dict()
     paper_lookup = dict()
     reader = UnicodeReader(f, delimiter='\t')
     reader.next()
-    fieldnames = ['conference', 'year', 'title', 'doi', 'link', 'fpage', 'lpage', 'number', 'special', 'type', 'abstract',
+    fieldnames = ['conference', 'year', 'title', 'doi', 'link', 'fpage', 'lpage', 'number', 'special', 'type',
+                  'abstract',
                   'names', 'aff', 'author_ids', 'author_number', 'authors', 'filename', 'citations']
 
     for row in reader:
@@ -64,15 +64,17 @@ def import_it():
           prop['affiliation'] = affiliation
         importer.add_node(['_Set_Node', 'Author'], author_id, prop)
 
-      importer.add_node(['_Network_Node', 'Publication', row['conference'].replace('InfoVIs','InfoVis'), paper_types[row['type']]], row['filename'],
-                        dict(year=row['year'],
-                             doi=row['doi'],
-                             name=row['title'].replace('"',"'"),
-                             pages=row['fpage'] + u'-' + row['lpage'],
-                             ieee=row['number'],
-                             abstract=row['abstract'].replace('"',"'"),
-                             authors=authors_ids))
-      citations[row['filename']] = row['citations'].replace(',',';').split(';')
+      importer.add_node(
+          ['_Network_Node', 'Publication', row['conference'].replace('InfoVIs', 'InfoVis'), paper_types[row['type']]],
+          row['filename'],
+          dict(year=row['year'],
+               doi=row['doi'],
+               name=row['title'].replace('"', "'"),
+               pages=row['fpage'] + u'-' + row['lpage'],
+               ieee=row['number'],
+               abstract=row['abstract'].replace('"', "'"),
+               authors=authors_ids))
+      citations[row['filename']] = row['citations'].replace(',', ';').split(';')
       paper_lookup[row['filename']] = row['filename']
       paper_lookup[row['number']] = row['filename']
       for author_id in authors_ids:
@@ -89,6 +91,7 @@ def import_it():
   importer.append('MATCH (a:Publication)-[:Cites]->(b:Publication) set b.cites = b.cites +1')
   importer.append('MATCH (a:Author)-[:AuthorOf]->(b:Publication) set a.publications = a.publications + 1 , a.cites = a.cites + b.cites')
   importer.finish()
+
 
 if __name__ == '__main__':
   import_it()

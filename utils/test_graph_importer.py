@@ -13,8 +13,8 @@ nodes = {"a": Node("NETWORK_NODE", id="A", name="A"),
          "g": Node("NETWORK_NODE", id="G", name="G")}
 
 edges = [Relationship(nodes["a"], "EDGE", nodes["b"], **{"_isNetworkEdge": True, "pathways": ["hsa01"]}),
-         Relationship(nodes["a"], "EDGE", nodes["d"])] \
-    # ,
+         Relationship(nodes["a"], "EDGE", nodes["d"])]
+
 # Relationship(nodes["b"], "RELATIONSHIP", nodes["c"]),
 # Relationship(nodes["b"], "RELATIONSHIP", nodes["d"]),
 # Relationship(nodes["b"], "RELATIONSHIP", nodes["e"]),
@@ -30,18 +30,19 @@ builder = CreateStatement(graph)
 
 # graph.create(nodeDict.values())
 for node in nodes.values():
-    builder.create(node)
+  builder.create(node)
 for edge in edges:
-    builder.create(edge)
+  builder.create(edge)
 builder.execute()
 
 
 def edge_query(source, target):
-    return ("MATCH (source:NETWORK_NODE {id: '" + source + "'}) "
-            "MATCH (target:NETWORK_NODE {id: '" + target + "'}) "
-            "MERGE (source)-[rel:EDGE]->(target) "
-            "ON CREATE SET rel._isSetEdge=true, rel.pathways=[\"hsa02\"], rel.try=true "
-            "ON MATCH SET rel._isSetEdge=true, rel.pathways= CASE WHEN NOT (HAS (rel.pathways)) THEN [\"hsa02\"] ELSE rel.pathways + [\"hsa02\", \"hsa03\"] END, rel.try=true ")
+  return ("MATCH (source:NETWORK_NODE {id: '" + source + "'}) "
+                                                         "MATCH (target:NETWORK_NODE {id: '" + target + "'}) "
+                                                                                                        "MERGE (source)-[rel:EDGE]->(target) "
+                                                                                                        "ON CREATE SET rel._isSetEdge=true, rel.pathways=[\"hsa02\"], rel.try=true "
+                                                                                                        "ON MATCH SET rel._isSetEdge=true, rel.pathways= CASE WHEN NOT (HAS (rel.pathways)) THEN [\"hsa02\"] ELSE rel.pathways + [\"hsa02\", \"hsa03\"] END, rel.try=true ")
+
 
 graph.cypher.execute("CREATE CONSTRAINT ON (n:NETWORK_NODE) ASSERT n.id IS UNIQUE")
 
@@ -53,7 +54,6 @@ graph.cypher.execute("MERGE (node:NETWORK_NODE {id: \"Q\"}) "
                      "ON CREATE SET node.name=\"Q\""
                      "ON MATCH SET node.name=\"Q\"")
 
-
 graph.cypher.execute(edge_query("A", "B"))
 graph.cypher.execute(edge_query("F", "G"))
 graph.cypher.execute(edge_query("A", "D"))
@@ -61,8 +61,3 @@ graph.cypher.execute(edge_query("A", "D"))
 
 # for record in res:
 #     print record;
-
-
-
-
-

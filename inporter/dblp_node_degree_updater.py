@@ -10,8 +10,3 @@ print x
 
 # for record in res:
 #     print record;
-
-
-
-
-

@@ -1,72 +1,80 @@
-
-import httplib, urllib
+import httplib
+import urllib
 import json
 from py2neo import Graph
-from flask import Flask, request, Response, jsonify
-from caleydo_server.config import view as configview
-import caleydo_server.websocket as ws
-import caleydo_server.util as utils
-
-import logging
-_log = logging.getLogger(__name__)
-
-app = Flask(__name__)
-websocket = ws.Socket(app)
-
+from phovea_server.ns import Namespace, request, Response, jsonify
+from phovea_server.config import view as configview
+import phovea_server.websocket as ws
+import phovea_server.util as utils
 import memcache
-mc = memcache.Client(['127.0.0.1:11211'], debug=0)
+import logging
 
-mc_prefix='pathways_'
+_log = logging.getLogger(__name__)
+c = configview('pathfinder_graph')
+
+app = Namespace(__name__)
+websocket = ws.Socket(app)
+mc = memcache.Client([c.memcached], debug=0)
+
+mc_prefix = 'pathways_'
+
 
 class Config(object):
   def __init__(self, id, raw):
     self.id = id
     self.raw = raw
     sett = raw
-    c = configview('pathfinder_graph')
-    self.port = sett.get('port',c.port)
+    self.port = sett.get('port', c.port)
     self.host = sett.get('host', c.host)
-    self.url = sett.get('url','http://'+self.host+':'+str(self.port))
+    self.url = sett.get('url', 'http://' + self.host + ':' + str(self.port))
 
-    self.node_label = sett.get('node_label','_Network_Node')
-    self.set_label = sett.get('set_label','_Set_Node')
+    self.node_label = sett.get('node_label', '_Network_Node')
+    self.set_label = sett.get('set_label', '_Set_Node')
 
-    self.directions = sett.get('directions', dict(Edge='out',ConsistsOfEdge='both')) #both ConsistsOf for the reversal
-    self.directions_neighbor = sett.get('directions_neighbor',self.directions) #both ConsistsOf for the reversal
-    #by default inline ConsistsOfEdges
-    self.inline = sett.get('inline', dict(inline='ConsistsOfEdge',undirectional=False,flag='_isSetEdge',aggregate=dict(pathways='pathways'),toaggregate='id',type='Edge'))
+    self.directions = sett.get('directions',
+                               dict(Edge='out', ConsistsOfEdge='both'))  # both ConsistsOf for the reversal
+    self.directions_neighbor = sett.get('directions_neighbor', self.directions)  # both ConsistsOf for the reversal
+    # by default inline ConsistsOfEdges
+    self.inline = sett.get('inline', dict(inline='ConsistsOfEdge', undirectional=False, flag='_isSetEdge',
+                                          aggregate=dict(pathways='pathways'), toaggregate='id', type='Edge'))
 
-    self.client_conf = configview('pathfinder.uc').get(id)
+    self.client_conf = configview('pathfinder_graph.client').get(id)
+
 
 config = None
 
 
 def update_config(args):
   global config
-  uc = args.get('uc','dblp')
-  #print args, uc
+  uc = args.get('uc', 'dblp')
+  # print args, uc
   config = Config(uc, configview('pathfinder_graph.uc').get(uc))
+
 
 @app.before_request
 def resolve_usecase():
-  #print 'before'
+  # print 'before'
   update_config(request.args)
 
+
 def resolve_db():
-  graph = Graph(config.url + "/db/data/")
+  graph = Graph(config.url + '/db/data/')
   return graph
+
 
 @app.route('/config.json')
 def get_config():
   return jsonify(config.client_conf)
 
+
 def lookup_gene_id(dss, node):
-  labels = map(str, node.labels)
+  labels = map(str, node.labels())
   for ds in dss:
     for n in ds['mapping_nodes']:
       if n['node_label'] in labels:
         return node.properties[n['id_property']]
   return None
+
 
 def add_datasets(prop, node):
   if 'datasets' not in config.client_conf:
@@ -75,10 +83,11 @@ def add_datasets(prop, node):
   gene_id = lookup_gene_id(config.client_conf['datasets'], node)
   if gene_id:
     data = ccle.boxplot_api2(gene_id)
-    for k,v in data.iteritems():
+    for k, v in data.iteritems():
       prop[k] = v
 
-def preform_search(s, limit=20, label = None, prop = 'name'):
+
+def preform_search(s, limit=20, label=None, prop='name'):
   """ performs a search for a given search query
   :param s:
   :param limit: maximal number of results
@@ -92,18 +101,21 @@ def preform_search(s, limit=20, label = None, prop = 'name'):
 
   import re
   # convert to reqex expression
-  s = '.*' + re.escape(s.lower()).replace('\\','\\\\') + '.*'
+  s = '.*' + re.escape(s.lower()).replace('\\', '\\\\') + '.*'
 
   graph = resolve_db()
 
-  query = 'MATCH (n:{0}) WHERE n.{1} =~ "(?i){2}" RETURN id(n) as id, n.{1} as name, n.id as nid, labels(n) as labels ORDER BY n.{1} LIMIT {3}'.format(label, prop, s, limit)
+  query = """
+  MATCH (n:{0}) WHERE n.{1} =~ "(?i){2}"
+  RETURN id(n) as id, n.{1} as name, n.id as nid, labels(n) as labels
+  ORDER BY n.{1} LIMIT {3}""".format(label, prop, s, limit)
 
   _log.debug('search query: %s', query)
 
-  records = graph.cypher.execute(query)
+  records = graph.run(query)
 
   def convert(result):
-    return dict(value=result.id, label=result.name, id=result.nid, labels=result.labels)
+    return dict(value=result['id'], label=result['name'], id=result['nid'], labels=result['labels'])
 
   return [convert(r) for r in records]
 
@@ -113,11 +125,12 @@ def find_node():
   s = request.args.get('q', '')
   limit = request.args.get('limit', 20)
   label = request.args.get('label', config.node_label)
-  prop = request.args.get('prop','name')
+  prop = request.args.get('prop', 'name')
 
   results = preform_search(s, limit, label, prop)
 
   return jsonify(q=s, linit=limit, label=label, prop=prop, results=results)
+
 
 def parse_incremental_json(text, on_chunk):
   """
@@ -130,22 +143,22 @@ def parse_incremental_json(text, on_chunk):
   open_braces = 0
   l = len(text)
 
-  if l > 0 and (text[act] == '[' or text[act] == ','): #skip initial:
+  if l > 0 and (text[act] == '[' or text[act] == ','):  # skip initial:
     act = 1
 
   start = act
 
   while act < l:
     c = text[act]
-    if c == '{': #starting object
+    if c == '{':  # starting object
       open_braces += 1
-    elif c == '}': #end object
+    elif c == '}':  # end object
       open_braces -= 1
-      if open_braces == 0: #at the root
-        on_chunk(json.loads(text[start:act+1]))
+      if open_braces == 0:  # at the root
+        on_chunk(json.loads(text[start:act + 1]))
         start = act + 1
         act += 1
-        if act < l and text[act] == ',': #skip separator
+        if act < l and text[act] == ',':  # skip separator
           start += 1
           act += 1
     act += 1
@@ -159,13 +172,14 @@ class SocketTask(object):
     self.socket_ns = socket_ns
 
   def send_impl(self, t, msg):
-    #print 'send'+t+str(msg)
-    d = json.dumps(dict(type=t,data=msg))
+    # print 'send'+t+str(msg)
+    d = json.dumps(dict(type=t, data=msg))
     self.socket_ns.send(d)
 
   def send_str(self, t, s):
-    d = '{ "type": "'+t+'", "data": '+s+'}'
+    d = '{ "type": "' + t + '", "data": ' + s + '}'
     self.socket_ns.send(d)
+
 
 class NodeAsyncTask(SocketTask):
   def __init__(self, q, socket_ns):
@@ -191,14 +205,14 @@ class NodeAsyncTask(SocketTask):
     pass
 
   def send_done(self):
-   pass
+    pass
 
   def send_node(self, node, **kwargs):
     nid = node['id']
     if nid in self._sent_nodes:
-      return #already sent during this query
-    _log.debug('send_node '+str(nid))
-    key = mc_prefix+config.id+'_n'+str(nid)
+      return  # already sent during this query
+    _log.debug('send_node ' + str(nid))
+    key = mc_prefix + config.id + '_n' + str(nid)
     sobj = mc.get(key)
     obj = None
     if not sobj:
@@ -206,7 +220,7 @@ class NodeAsyncTask(SocketTask):
         gnode = self._graph.node(nid)
         props = gnode.properties.copy()
         add_datasets(props, gnode)
-        obj = dict(id=nid,labels=map(str,gnode.labels),properties=props)
+        obj = dict(id=nid, labels=map(str, gnode.labels()), properties=props)
       except ValueError:
         obj = node
       sobj = utils.to_json(obj)
@@ -215,8 +229,8 @@ class NodeAsyncTask(SocketTask):
     if len(kwargs) > 0:
       if obj is None:
         obj = json.loads(sobj)
-      #we have additional stuff to transfer use a custom one
-      for k,v in kwargs.iteritems():
+      # we have additional stuff to transfer use a custom one
+      for k, v in kwargs.iteritems():
         obj[k] = v
       sobj = utils.to_json(obj)
 
@@ -225,19 +239,21 @@ class NodeAsyncTask(SocketTask):
 
   def send_relationship(self, rel):
     rid = rel['id']
-    if rid < 0: #its a fake one
+    if rid < 0:  # its a fake one
       return
     if rid in self._sent_relationships:
-      return #already sent during this query
-    _log.debug('send_relationship '+str(rid))
-    key = mc_prefix+config.id+'_r'+str(rid)
+      return  # already sent during this query
+    _log.debug('send_relationship ' + str(rid))
+    key = mc_prefix + config.id + '_r' + str(rid)
     obj = mc.get(key)
     if not obj:
       obj = rel.copy()
       try:
         grel = self._graph.relationship(rid)
         obj['properties'] = grel.properties
-      except ValueError:
+      except ValueError:  # ignore not found ones
+        pass
+      except IndexError:  # ignore not found ones
         pass
       obj = json.dumps(obj)
       mc.set(key, obj)
@@ -248,11 +264,8 @@ class NodeAsyncTask(SocketTask):
     return '/caleydo/kShortestPaths/?{0}'.format(args)
 
   def run(self):
-    headers = {
-      'Content-type': 'application/json',
-      'Accept': 'application/json'
-      }
-    args = { k : json.dumps(v) if isinstance(v, dict) else v for k,v in self.q.iteritems()}
+    headers = {'Content-type': 'application/json', 'Accept': 'application/json'}
+    args = {k: json.dumps(v) if isinstance(v, dict) else v for k, v in self.q.iteritems()}
     _log.debug(args)
     args = urllib.urlencode(args)
     url = self.to_url(args)
@@ -268,30 +281,31 @@ class NodeAsyncTask(SocketTask):
       _log.info('aborted early')
       return
     content_length = int(response.getheader('Content-Length', '0'))
-    _log.debug('waiting for response: '+str(content_length))
+    _log.debug('waiting for response: ' + str(content_length))
     # Read data until we've read Content-Length bytes or the socket is closed
     l = 0
     data = ''
     while not self.shutdown.isSet() and (l < content_length or content_length == 0):
-      s = response.read(4)  #read at most 32 byte
+      s = response.read(4)  # read at most 32 byte
       if not s or self.shutdown.isSet():
         break
       data += s
       l += len(s)
-      data = parse_incremental_json(data,self.send_incremental)
+      data = parse_incremental_json(data, self.send_incremental)
 
     if self.shutdown.isSet():
       _log.debug('aborted')
       return
 
-    parse_incremental_json(data,self.send_incremental)
+    parse_incremental_json(data, self.send_incremental)
     # print response.status, response.reason
-    #data = response.read()
+    # data = response.read()
     self.send_done()
 
     self.conn.close()
     self.shutdown.set()
     _log.debug('end')
+
 
 class Query(NodeAsyncTask):
   def __init__(self, q, socket_ns):
@@ -302,20 +316,20 @@ class Query(NodeAsyncTask):
     if self.shutdown.isSet():
       return
     self.paths.append(path)
-    #check for all nodes in the path and load and send their missing data
+    # check for all nodes in the path and load and send their missing data
     for n in path['nodes']:
       self.send_node(n)
     for e in path['edges']:
       self.send_relationship(e)
-    _log.debug('sending paths %d',len(self.paths))
-    self.send_impl('query_path',dict(query=self.q,path=path,i=len(self.paths)))
+    _log.debug('sending paths %d', len(self.paths))
+    self.send_impl('query_path', dict(query=self.q, path=path, i=len(self.paths)))
 
   def send_start(self):
-    self.send_impl('query_start',dict(query=self.q))
+    self.send_impl('query_start', dict(query=self.q))
 
   def send_done(self):
-    _log.debug('sending done %d paths',len(self.paths))
-    self.send_impl('query_done',dict(query=self.q)) #,paths=self.paths))
+    _log.debug('sending done %d paths', len(self.paths))
+    self.send_impl('query_done', dict(query=self.q))  # ,paths=self.paths))
 
   def to_url(self, args):
     return '/caleydo/kShortestPaths/?{0}'.format(args)
@@ -335,18 +349,20 @@ class Neighbors(NodeAsyncTask):
     edge = neighbor['_edge']
     self.send_node(neighbor)
     self.send_relationship(edge)
-    _log.debug('sending %d neighbors',len(self.neighbors))
-    self.send_impl('neighbor_neighbor',dict(node=self.node,tag=self.tag,neighbor=neighbor,edge=edge, i=len(self.neighbors)))
+    _log.debug('sending %d neighbors', len(self.neighbors))
+    self.send_impl('neighbor_neighbor',
+                   dict(node=self.node, tag=self.tag, neighbor=neighbor, edge=edge, i=len(self.neighbors)))
 
   def send_start(self):
-    self.send_impl('neighbor_start',dict(node=self.node,tag=self.tag))
+    self.send_impl('neighbor_start', dict(node=self.node, tag=self.tag))
 
   def send_done(self):
-    _log.debug('sending %d neighbors done',len(self.neighbors))
-    self.send_impl('neighbor_done',dict(node=self.node,tag=self.tag,neighbors=self.neighbors)) #,paths=self.paths))
+    _log.debug('sending %d neighbors done', len(self.neighbors))
+    self.send_impl('neighbor_done', dict(node=self.node, tag=self.tag, neighbors=self.neighbors))  # ,paths=self.paths))
 
   def to_url(self, args):
-    return '/caleydo/kShortestPaths/neighborsOf/{0}?{1}'.format(str(self.node),args)
+    return '/caleydo/kShortestPaths/neighborsOf/{0}?{1}'.format(str(self.node), args)
+
 
 class Find(NodeAsyncTask):
   def __init__(self, q, socket_ws):
@@ -358,20 +374,22 @@ class Find(NodeAsyncTask):
       return
     self.matches.append(found)
     self.send_node(found)
-    _log.debug('sending %d matches',len(self.matches))
-    self.send_impl('found',dict(node=found,i=len(self.matches)))
+    _log.debug('sending %d matches', len(self.matches))
+    self.send_impl('found', dict(node=found, i=len(self.matches)))
 
   def send_start(self):
-    self.send_impl('found_start',dict())
+    self.send_impl('found_start', dict())
 
   def send_done(self):
-    _log.debug('sending %d matches done',len(self.matches))
-    self.send_impl('found_done',dict(matches=self.matches)) #,paths=self.paths))
+    _log.debug('sending %d matches done', len(self.matches))
+    self.send_impl('found_done', dict(matches=self.matches))  # ,paths=self.paths))
 
   def to_url(self, args):
     return '/caleydo/kShortestPaths/find?{0}'.format(args)
 
+
 current_query = None
+
 
 @websocket.route('/query')
 def websocket_query(ws):
@@ -392,10 +410,11 @@ def websocket_query(ws):
     if t == 'query':
       current_query = Query(to_query(payload), ws)
     elif t == 'neighbor':
-      current_query = Neighbors(to_neighbors_query(payload), payload.get('tag',None), ws)
+      current_query = Neighbors(to_neighbors_query(payload), payload.get('tag', None), ws)
     elif t == 'find':
       current_query = Find(to_find_query(payload), ws)
     current_query.run()
+
 
 def to_query(msg):
   """
@@ -403,37 +422,35 @@ def to_query(msg):
   :param msg:
   :return:
   """
-  k = msg.get('k',1) #number of paths
-  max_depth = msg.get('maxDepth', 10) #max length
+  k = msg.get('k', 1)  # number of paths
+  max_depth = msg.get('maxDepth', 10)  # max length
   just_network = msg.get('just_network_edges', False)
   q = msg['query']
   _log.debug(q)
 
-  args = {
-    'k': k,
-    'maxDepth': max_depth,
-  }
+  args = dict(k=k, maxDepth=max_depth)
 
   min_length = msg.get('minLength', 0)
   if min_length > 0:
     args['minLength'] = min_length
 
-  constraint = {'context': 'node', '$contains' : config.node_label}
+  constraint = {'context': 'node', '$contains': config.node_label}
 
-  #TODO generate from config
+  # TODO generate from config
   directions = dict(config.directions)
   inline = config.inline
 
   if q is not None:
-    constraint = {'$and' : [constraint, q] }
+    constraint = {'$and': [constraint, q]}
 
-  args['constraints'] = dict(c=constraint,dir=directions,inline=inline,acyclic=True)
+  args['constraints'] = dict(c=constraint, dir=directions, inline=inline, acyclic=True)
   if just_network:
     del directions[inline['inline']]
     c = args['constraints']
     del c['inline']
 
   return args
+
 
 def to_neighbors_query(msg):
   """
@@ -443,13 +460,11 @@ def to_neighbors_query(msg):
   """
   just_network = msg.get('just_network_edges', False)
   node = int(msg.get('node'))
-  args = {
-    'node': node
-  }
-  #TODO generate from config
+  args = dict(node=node)
+  # TODO generate from config
   directions = dict(config.directions_neighbor)
   inline = config.inline
-  args['constraints'] = dict(dir=directions,inline=inline,acyclic=True)
+  args['constraints'] = dict(dir=directions, inline=inline, acyclic=True)
   if just_network:
     del directions[inline['inline']]
     c = args['constraints']
@@ -459,21 +474,19 @@ def to_neighbors_query(msg):
 
 
 def to_find_query(msg):
-  k = msg.get('k',1) #number of paths
+  k = msg.get('k', 1)  # number of paths
   q = msg['query']
 
-  args = {
-    'k': k,
-  }
+  args = dict(k=k)
 
   min_length = msg.get('minLength', 0)
   if min_length > 0:
     args['minLength'] = min_length
 
-  constraint = {'context': 'node', '$contains' : config.node_label}
+  constraint = {'context': 'node', '$contains': config.node_label}
 
   if q is not None:
-    constraint = {'$and' : [constraint, q] }
+    constraint = {'$and': [constraint, q]}
 
   args['constraints'] = dict(c=constraint)
   return args
@@ -489,18 +502,18 @@ def get_graph_summary():
 
   def compute():
     query = 'MATCH (n:{0}) RETURN COUNT(n) AS nodes'.format(config.node_label)
-    records = graph.cypher.execute(query)
-    num_nodes = records[0].nodes
+    records = graph.data(query)
+    num_nodes = records[0]['nodes']
 
     query = 'MATCH (n1:{0})-[e]->(n2:{0}) RETURN COUNT(e) AS edges'.format(config.node_label)
-    records = graph.cypher.execute(query)
-    num_edges = records[0].edges
+    records = graph.data(query)
+    num_edges = records[0]['edges']
 
     query = 'MATCH (n:{0}) RETURN COUNT(n) AS sets'.format(config.set_label)
-    records = graph.cypher.execute(query)
-    num_sets = records[0].sets
+    records = graph.data(query)
+    num_sets = records[0]['sets']
 
-    yield json.dumps(dict(Nodes=num_nodes,Edges=num_edges,Sets=num_sets))
+    yield json.dumps(dict(Nodes=num_nodes, Edges=num_edges, Sets=num_sets))
 
   return Response(compute(), mimetype='application/json')
 
@@ -509,8 +522,9 @@ def create_get_sets_query(sets):
   # convert to query form
   set_queries = ['"{0}"'.format(s) for s in sets]
 
-  #create the query
-  return 'MATCH (n:{1}) WHERE n.id in [{0}] RETURN n, n.id as id, id(n) as uid'.format(', '.join(set_queries), config.set_label)
+  # create the query
+  return 'MATCH (n:{1}) WHERE n.id in [{0}] RETURN n, n.id as id, id(n) as uid'.format(', '.join(set_queries),
+                                                                                       config.set_label)
 
 
 @app.route('/setinfo')
@@ -520,12 +534,12 @@ def get_set_info():
   :return:
   """
   sets = request.args.getlist('sets[]')
-  #print sets
+  # print sets
   if len(sets) == 0:
     return jsonify()
 
   def to_key(s):
-    return mc_prefix+config.id+'setinfo'+'_'+s
+    return mc_prefix + config.id + 'setinfo' + '_' + s
 
   def compute():
     response = dict()
@@ -536,27 +550,24 @@ def get_set_info():
         response[s] = obj
       else:
         to_query.append(s)
-    if len(to_query) >= 0: #all cached
+    if len(to_query) >= 0:  # all cached
       graph = resolve_db()
       query = create_get_sets_query(to_query)
-      records = graph.cypher.execute(query)
+      records = graph.run(query)
 
       for record in records:
-        node = record.n
-        obj = json.dumps({
-          'id': record.uid,
-          'labels': map(str, node.labels),
-          'properties': node.properties
-        })
-        #cache for next time
-        mc.set(to_key(record.id), obj)
-        response[record.id] = obj
+        node = record['n']
+        obj = json.dumps(dict(id=record['uid'], labels=map(str, node.labels()), properties=node.properties))
+        # cache for next time
+        mc.set(to_key(record['id']), obj)
+        response[record['id']] = obj
 
-    #print 'sent setinfo for ',sets
-    #manually create combined version avoiding partial json loads
-    yield '{'+','.join(('"'+k+'": '+v for k,v in response.iteritems()))+'}'
+    # print 'sent setinfo for ',sets
+    # manually create combined version avoiding partial json loads
+    yield '{' + ','.join(('"' + k + '": ' + v for k, v in response.iteritems())) + '}'
 
   return Response(compute(), mimetype='application/json')
+
 
 def create():
   """
