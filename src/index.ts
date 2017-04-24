@@ -108,7 +108,7 @@ export default class ServerSearch extends EventHandler {
   private send(type: string, msg: any) {
     if (!this.socket) {
       this.initialMessages.push(asMessage(type, msg));
-      const s = new WebSocket('ws://' + document.domain + ':' + location.port + '/api/pathway/query');
+      const s = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${document.domain}:${location.port}/api/pathway/query`);
       this.fire('ws_open');
       s.onmessage = (msg) => this.onMessage(JSON.parse(msg.data));
       s.onopen = () => {
