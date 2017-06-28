@@ -540,7 +540,7 @@ def create_get_sets_query(sets, config):
 
   # create the query
   return 'MATCH (n:{1}) WHERE n.{2} in [{0}] RETURN n, n.{2} as id, id(n) as uid'.format(', '.join(set_queries),
-                                                                                       config.set_label, config.node_id)
+                                                                                         config.set_label, config.node_id)
 
 
 @app.route('/setinfo')
