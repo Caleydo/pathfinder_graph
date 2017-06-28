@@ -20,10 +20,9 @@ mc_prefix = 'pathways_'
 
 
 class Config(object):
-  def __init__(self, id, raw):
+  def __init__(self, id, sett):
     self.id = id
-    self.raw = raw
-    sett = raw
+    self.raw = sett
     self.port = sett.get('port', c.port)
     self.host = sett.get('host', c.host)
     self.url = sett.get('url', 'http://' + self.host + ':' + str(self.port))
@@ -38,7 +37,7 @@ class Config(object):
     self.inline = sett.get('inline', dict(inline='ConsistsOfEdge', undirectional=False, flag='_isSetEdge',
                                           aggregate=dict(pathways='pathways'), toaggregate='id', type='Edge'))
 
-    self.client_conf = configview('pathfinder_graph.client').get(id)
+    self.client_conf = sett.get('client')
 
 
 config = None
