@@ -3,6 +3,7 @@ import urllib
 import json
 from py2neo import Graph
 from phovea_server.ns import Namespace, request, Response, jsonify
+from flask import g
 from phovea_server.config import view as configview
 import phovea_server.websocket as ws
 import phovea_server.util as utils
@@ -39,15 +40,11 @@ class Config(object):
 
     self.client_conf = sett.get('client')
 
-
-config = None
-
-
 def update_config(args):
-  global config
   uc = args.get('uc', 'dblp')
   # print args, uc
-  config = Config(uc, configview('pathfinder_graph.uc').get(uc))
+  # store in request context
+  g.config = Config(uc, c.uc.get(uc))
 
 
 @app.before_request
@@ -56,14 +53,16 @@ def resolve_usecase():
   update_config(request.args)
 
 
-def resolve_db():
+def resolve_db(config=None):
+  if config is None:
+    config = g.config
   graph = Graph(config.url + '/db/data/')
   return graph
 
 
 @app.route('/config.json')
 def get_config():
-  return jsonify(config.client_conf)
+  return jsonify(g.config.client_conf)
 
 
 def lookup_gene_id(dss, node):
@@ -76,10 +75,10 @@ def lookup_gene_id(dss, node):
 
 
 def add_datasets(prop, node):
-  if 'datasets' not in config.client_conf:
+  if 'datasets' not in g.config.client_conf:
     return
   import pathfinder_ccle.ccle as ccle
-  gene_id = lookup_gene_id(config.client_conf['datasets'], node)
+  gene_id = lookup_gene_id(g.config.client_conf['datasets'], node)
   if gene_id:
     data = ccle.boxplot_api2(gene_id)
     for k, v in data.iteritems():
@@ -93,7 +92,7 @@ def preform_search(s, limit=20, label=None, prop='name'):
   :return:
   """
   if label is None:
-    label = config.node_label
+    label = g.config.node_label
 
   if len(s) < 2:  # too short search query
     return []
@@ -123,7 +122,7 @@ def preform_search(s, limit=20, label=None, prop='name'):
 def find_node():
   s = request.args.get('q', '')
   limit = request.args.get('limit', 20)
-  label = request.args.get('label', config.node_label)
+  label = request.args.get('label', g.config.node_label)
   prop = request.args.get('prop', 'name')
 
   results = preform_search(s, limit, label, prop)
@@ -181,11 +180,12 @@ class SocketTask(object):
 
 
 class NodeAsyncTask(SocketTask):
-  def __init__(self, q, socket_ns):
+  def __init__(self, q, socket_ns, config):
     super(NodeAsyncTask, self).__init__(socket_ns)
     self.q = q
     self.conn = httplib.HTTPConnection(config.host, config.port)
     from threading import Event
+    self.config = config
     self.shutdown = Event()
     self._sent_nodes = set()
     self._sent_relationships = set()
@@ -211,7 +211,7 @@ class NodeAsyncTask(SocketTask):
     if nid in self._sent_nodes:
       return  # already sent during this query
     _log.debug('send_node ' + str(nid))
-    key = mc_prefix + config.id + '_n' + str(nid)
+    key = mc_prefix + self.config.id + '_n' + str(nid)
     sobj = mc.get(key)
     obj = None
     if not sobj:
@@ -243,7 +243,7 @@ class NodeAsyncTask(SocketTask):
     if rid in self._sent_relationships:
       return  # already sent during this query
     _log.debug('send_relationship ' + str(rid))
-    key = mc_prefix + config.id + '_r' + str(rid)
+    key = mc_prefix + self.config.id + '_r' + str(rid)
     obj = mc.get(key)
     if not obj:
       obj = rel.copy()
@@ -307,8 +307,8 @@ class NodeAsyncTask(SocketTask):
 
 
 class Query(NodeAsyncTask):
-  def __init__(self, q, socket_ns):
-    super(Query, self).__init__(q, socket_ns)
+  def __init__(self, q, socket_ns, config):
+    super(Query, self).__init__(q, socket_ns, config)
     self.paths = []
 
   def send_incremental(self, path):
@@ -335,8 +335,8 @@ class Query(NodeAsyncTask):
 
 
 class Neighbors(NodeAsyncTask):
-  def __init__(self, q, tag, socket_ws):
-    super(Neighbors, self).__init__(q, socket_ws)
+  def __init__(self, q, tag, socket_ws, config):
+    super(Neighbors, self).__init__(q, socket_ws, config)
     self.node = q['node']
     self.tag = tag
     self.neighbors = []
@@ -364,8 +364,8 @@ class Neighbors(NodeAsyncTask):
 
 
 class Find(NodeAsyncTask):
-  def __init__(self, q, socket_ws):
-    super(Find, self).__init__(q, socket_ws)
+  def __init__(self, q, socket_ws, config):
+    super(Find, self).__init__(q, socket_ws, config)
     self.matches = []
 
   def send_incremental(self, found):
@@ -407,11 +407,11 @@ def websocket_query(ws):
     if current_query is not None:
       current_query.abort()
     if t == 'query':
-      current_query = Query(to_query(payload), ws)
+      current_query = Query(to_query(payload), ws, g.config)
     elif t == 'neighbor':
-      current_query = Neighbors(to_neighbors_query(payload), payload.get('tag', None), ws)
+      current_query = Neighbors(to_neighbors_query(payload), payload.get('tag', None), ws, g.config)
     elif t == 'find':
-      current_query = Find(to_find_query(payload), ws)
+      current_query = Find(to_find_query(payload), ws, g.config)
     current_query.run()
 
 
@@ -433,11 +433,11 @@ def to_query(msg):
   if min_length > 0:
     args['minLength'] = min_length
 
-  constraint = {'context': 'node', '$contains': config.node_label}
+  constraint = {'context': 'node', '$contains': g.config.node_label}
 
   # TODO generate from config
-  directions = dict(config.directions)
-  inline = config.inline
+  directions = dict(g.config.directions)
+  inline = g.config.inline
 
   if q is not None:
     constraint = {'$and': [constraint, q]}
@@ -461,8 +461,8 @@ def to_neighbors_query(msg):
   node = int(msg.get('node'))
   args = dict(node=node)
   # TODO generate from config
-  directions = dict(config.directions_neighbor)
-  inline = config.inline
+  directions = dict(g.config.directions_neighbor)
+  inline = g.config.inline
   args['constraints'] = dict(dir=directions, inline=inline, acyclic=True)
   if just_network:
     del directions[inline['inline']]
@@ -482,7 +482,7 @@ def to_find_query(msg):
   if min_length > 0:
     args['minLength'] = min_length
 
-  constraint = {'context': 'node', '$contains': config.node_label}
+  constraint = {'context': 'node', '$contains': g.config.node_label}
 
   if q is not None:
     constraint = {'$and': [constraint, q]}
@@ -500,15 +500,15 @@ def get_graph_summary():
   graph = resolve_db()
 
   def compute():
-    query = 'MATCH (n:{0}) RETURN COUNT(n) AS nodes'.format(config.node_label)
+    query = 'MATCH (n:{0}) RETURN COUNT(n) AS nodes'.format(g.config.node_label)
     records = graph.data(query)
     num_nodes = records[0]['nodes']
 
-    query = 'MATCH (n1:{0})-[e]->(n2:{0}) RETURN COUNT(e) AS edges'.format(config.node_label)
+    query = 'MATCH (n1:{0})-[e]->(n2:{0}) RETURN COUNT(e) AS edges'.format(g.config.node_label)
     records = graph.data(query)
     num_edges = records[0]['edges']
 
-    query = 'MATCH (n:{0}) RETURN COUNT(n) AS sets'.format(config.set_label)
+    query = 'MATCH (n:{0}) RETURN COUNT(n) AS sets'.format(g.config.set_label)
     records = graph.data(query)
     num_sets = records[0]['sets']
 
@@ -517,7 +517,7 @@ def get_graph_summary():
   return Response(compute(), mimetype='application/json')
 
 
-def create_get_sets_query(sets):
+def create_get_sets_query(sets, config):
   # convert to query form
   set_queries = ['"{0}"'.format(s) for s in sets]
 
@@ -537,6 +537,8 @@ def get_set_info():
   if len(sets) == 0:
     return jsonify()
 
+  config = g.config
+
   def to_key(s):
     return mc_prefix + config.id + 'setinfo' + '_' + s
 
@@ -550,8 +552,8 @@ def get_set_info():
       else:
         to_query.append(s)
     if len(to_query) >= 0:  # all cached
-      graph = resolve_db()
-      query = create_get_sets_query(to_query)
+      graph = resolve_db(config)
+      query = create_get_sets_query(to_query, config)
       records = graph.run(query)
 
       for record in records:
@@ -572,7 +574,6 @@ def create():
   """
    entry point of this plugin
   """
-  app.debug = True
   return app
 
 
