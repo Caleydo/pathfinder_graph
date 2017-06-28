@@ -29,6 +29,7 @@ class Config(object):
     self.url = sett.get('url', 'http://' + self.host + ':' + str(self.port))
 
     self.node_label = sett.get('node_label', '_Network_Node')
+    self.node_id = sett.get('node_id', 'id')
     self.set_label = sett.get('set_label', '_Set_Node')
 
     self.directions = sett.get('directions',
@@ -105,8 +106,8 @@ def preform_search(s, limit=20, label=None, prop='name'):
 
   query = """
   MATCH (n:{0}) WHERE n.{1} =~ "(?i){2}"
-  RETURN id(n) as id, n.{1} as name, n.id as nid, labels(n) as labels
-  ORDER BY n.{1} LIMIT {3}""".format(label, prop, s, limit)
+  RETURN id(n) as id, n.{1} as name, n.{4} as nid, labels(n) as labels
+  ORDER BY n.{1} LIMIT {3}""".format(label, prop, s, limit, g.config.node_id)
 
   _log.debug('search query: %s', query)
 
@@ -442,11 +443,14 @@ def to_query(msg):
   if q is not None:
     constraint = {'$and': [constraint, q]}
 
-  args['constraints'] = dict(c=constraint, dir=directions, inline=inline, acyclic=True)
-  if just_network:
-    del directions[inline['inline']]
-    c = args['constraints']
-    del c['inline']
+  if inline:
+    args['constraints'] = dict(c=constraint, dir=directions, inline=inline, acyclic=True)
+    if just_network:
+      del directions[inline['inline']]
+      c = args['constraints']
+      del c['inline']
+  else:
+    args['constraints'] = dict(c=constraint, dir=directions, acyclic=True)
 
   return args
 
@@ -463,11 +467,14 @@ def to_neighbors_query(msg):
   # TODO generate from config
   directions = dict(g.config.directions_neighbor)
   inline = g.config.inline
-  args['constraints'] = dict(dir=directions, inline=inline, acyclic=True)
-  if just_network:
-    del directions[inline['inline']]
-    c = args['constraints']
-    del c['inline']
+  if inline:
+    args['constraints'] = dict(dir=directions, inline=inline, acyclic=True)
+    if just_network:
+      del directions[inline['inline']]
+      c = args['constraints']
+      del c['inline']
+  else:
+    args['constraints'] = dict(dir=directions, acyclic=True)
 
   return args
 
@@ -522,8 +529,8 @@ def create_get_sets_query(sets, config):
   set_queries = ['"{0}"'.format(s) for s in sets]
 
   # create the query
-  return 'MATCH (n:{1}) WHERE n.id in [{0}] RETURN n, n.id as id, id(n) as uid'.format(', '.join(set_queries),
-                                                                                       config.set_label)
+  return 'MATCH (n:{1}) WHERE n.{2} in [{0}] RETURN n, n.{2} as id, id(n) as uid'.format(', '.join(set_queries),
+                                                                                       config.set_label, config.node_id)
 
 
 @app.route('/setinfo')
