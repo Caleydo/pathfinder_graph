@@ -4,7 +4,7 @@ import json
 from py2neo import Graph
 from phovea_server.ns import Namespace, request, Response, jsonify
 from flask import g
-from phovea_server.config import view as configview
+from phovea_server.config import view as configview, get as configget
 import phovea_server.websocket as ws
 import phovea_server.util as utils
 import memcache
@@ -41,11 +41,21 @@ class Config(object):
 
     self.client_conf = sett.get('client')
 
+
+def find_use_case(uc):
+  base = c.uc.get(uc, None)
+  if base is not None:
+    return base
+  # check extension configs
+  view = configget('pathfinder_graph_' + uc)
+  return view
+
+
 def update_config(args):
   uc = args.get('uc', 'dblp')
   # print args, uc
   # store in request context
-  g.config = Config(uc, c.uc.get(uc))
+  g.config = Config(uc, find_use_case(uc))
 
 
 @app.before_request
