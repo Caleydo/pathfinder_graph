@@ -12,13 +12,13 @@ services:
   db_memcached:
     image: memcached:1.4-alpine
   db_neo4j_dblp:
-    image: 922145058410.dkr.ecr.eu-central-1.amazonaws.com/phovea/neo4j:latest
+    image: caleydo/phovea_neo4j:v1.0
     volumes:
     - db_neo4j_dblp:/data
     environment:
     - NEO4J_AUTH=none
   db_neo4j_pathways:
-    image: 922145058410.dkr.ecr.eu-central-1.amazonaws.com/phovea/neo4j:latest
+    image: caleydo/phovea_neo4j:v1.0
     volumes:
     - db_neo4j_pathways:/data
     environment:
