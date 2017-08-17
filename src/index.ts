@@ -26,6 +26,13 @@ export interface IQuery {
   serialize(): any;
 }
 
+export interface IServerSearchResult {
+  value: number;
+  label: string;
+  id: string;
+  labels: string[];
+}
+
 
 function asMessage(type: string, msg: any) {
   msg.uc = uc();
@@ -184,7 +191,7 @@ export default class ServerSearch extends EventHandler {
    * @param prop the property to look in
    * @param nodeType the node type to look in
    */
-  async search(query: string, prop: string = 'name', nodeType: string = '_Network_Node') {
+  async search(query: string, prop: string = 'name', nodeType: string = '_Network_Node'): Promise<Readonly<IServerSearchResult[]>> {
     const key = nodeType + '.' + prop;
     let cache: Map<string, any>;
     if (!this.searchCache.has(key)) {
