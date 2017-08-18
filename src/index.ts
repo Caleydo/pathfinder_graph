@@ -47,6 +47,7 @@ export default class ServerSearch extends EventHandler {
   static readonly EVENT_QUERY_PATH = 'query_path';
   static readonly EVENT_NEIGHBOR = 'neighbor_neighbor';
   static readonly EVENT_PATH = 'found';
+  static readonly EVENT_QUERY_DONE = 'query_done';
 
   private static readonly MSG_NEW_NODE = 'new_node';
   private static readonly MSG_NEW_EDGE = 'new_relationship';
