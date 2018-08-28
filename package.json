@@ -71,7 +71,7 @@
     "node": ">= 6"
   },
   "dependencies": {
-    "phovea_core": "github:phovea/phovea_core#v0.0.5",
+    "phovea_core": "2.0.0",
     "pathfinder_ccle": "github:Caleydo/pathfinder_ccle#master"
   },
   "devDependencies": {
